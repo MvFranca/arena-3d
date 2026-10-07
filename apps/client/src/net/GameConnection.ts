@@ -251,7 +251,7 @@ export class GameConnection {
 export const connection = new GameConnection();
 
 export function defaultGameServerUrl(): string {
-  const env = import.meta.env.VITE_GAME_SERVER_URL as string | undefined;
+  const env = import.meta.env.GAME_SERVER_URL as string | undefined;
   if (env) return env;
   const proto = location.protocol === "https:" ? "wss" : "ws";
   return `${proto}://${location.hostname}:8080`;

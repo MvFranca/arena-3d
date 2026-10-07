@@ -2,7 +2,7 @@
 # Deploy: fly launch (primeira vez) ou fly deploy
 # Região GRU = São Paulo (menor latência no BR)
 
-app = "arena-game"
+app = "arena-3d"
 primary_region = "gru"
 
 [build]
@@ -10,7 +10,7 @@ primary_region = "gru"
 [env]
   ALLOW_ANON = "true"
   PORT = "8080"
-  PUBLIC_WS_URL = "wss://arena-game.fly.dev"
+  PUBLIC_WS_URL = "wss://arena-3d.fly.dev"
 
 [http_service]
   internal_port = 8080

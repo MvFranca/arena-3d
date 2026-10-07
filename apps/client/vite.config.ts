@@ -4,6 +4,8 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Expõe GAME_SERVER_URL no cliente (além do prefixo VITE_ padrão).
+  envPrefix: ["VITE_", "GAME_SERVER_"],
   server: { port: 5173 },
   build: {
     target: "es2022",
