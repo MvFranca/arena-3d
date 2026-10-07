@@ -1,4 +1,4 @@
-import { ARCHETYPES, ATTR, ATTRIBUTE_KEYS, attributeBudgetUsed, listAbilities, sanitizeLoadout, type AbilityId, type Attributes, type Loadout } from "@arena/sim";
+import { ARCHETYPES, ATTR, ATTRIBUTE_KEYS, attributeBudgetUsed, listAbilities, listSkins, sanitizeLoadout, type AbilityId, type Attributes, type Loadout } from "@arena/sim";
 import { useEffect, useState } from "react";
 import { api, type MatchHistoryItem, type PlayerStats } from "../../session/api";
 import { CameraSettings } from "../../ui/CameraSettings";
@@ -113,6 +113,21 @@ export function ProfileScreen() {
               <div className="font-semibold">Nenhuma</div>
               <div className="mt-1 text-xs text-white/50">Só habilidade pura.</div>
             </button>
+          </div>
+
+          <h3 className="font-display mt-6 mb-2 text-lg font-bold">Visual</h3>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {listSkins().map((s) => (
+              <button
+                key={s.id}
+                className={`rounded-xl border p-3 text-left text-sm transition ${draft.skinId === s.id ? "border-white/50 bg-white/10" : "border-white/10 bg-white/5 hover:bg-white/10"}`}
+                onClick={() => setDraft({ ...draft, skinId: s.id })}
+              >
+                <div className="mb-2 h-3 w-10 rounded-full" style={{ background: s.swatch }} />
+                <div className="font-semibold">{s.name}</div>
+                <div className="mt-1 text-xs text-white/50">{s.description}</div>
+              </button>
+            ))}
           </div>
 
           <div className="mt-6 flex items-center justify-end gap-3">

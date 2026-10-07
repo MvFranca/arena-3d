@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import { resolveIdentity } from "../auth";
+import { resolveRoomMap } from "../platform";
 import { config } from "../config";
 import { log } from "../log";
 import { metrics } from "../metrics";
@@ -135,13 +136,7 @@ export class GameServer {
   private onJson(session: Session, msg: ClientMessage): void {
     switch (msg.t) {
       case "create": {
-        if (session.room) session.room.leave(session.playerId);
-        try {
-          const room = this.rooms.create(msg.rulesetId);
-          room.join(session);
-        } catch (err) {
-          session.send({ t: "error", code: String((err as Error).message), message: errorText((err as Error).message) });
-        }
+        void this.handleCreate(session, msg);
         break;
       }
       case "join": {
@@ -170,11 +165,37 @@ export class GameServer {
         if (reason) session.send({ t: "error", code: reason, message: errorText(reason) });
         break;
       }
+      case "set_map": {
+        void this.handleSetMap(session, msg.mapId);
+        break;
+      }
       case "leave":
         session.room?.leave(session.playerId);
         break;
       default:
         break;
+    }
+  }
+
+  private async handleCreate(session: Session, msg: Extract<ClientMessage, { t: "create" }>): Promise<void> {
+    if (session.room) session.room.leave(session.playerId);
+    try {
+      const room = await this.rooms.create(msg.rulesetId, { mapId: msg.mapId });
+      room.join(session);
+    } catch (err) {
+      session.send({ t: "error", code: String((err as Error).message), message: errorText((err as Error).message) });
+    }
+  }
+
+  private async handleSetMap(session: Session, mapId: string): Promise<void> {
+    const room = session.room;
+    if (!room) return;
+    try {
+      const resolved = await resolveRoomMap(mapId, room.ranked, room.ruleset.arenaId);
+      const reason = room.setMap(session.playerId, resolved.mapId, resolved.arena);
+      if (reason) session.send({ t: "error", code: reason, message: errorText(reason) });
+    } catch (err) {
+      session.send({ t: "error", code: String((err as Error).message), message: errorText((err as Error).message) });
     }
   }
 
@@ -224,11 +245,13 @@ function errorText(code: string): string {
     room_closed: "A sala foi encerrada.",
     server_full: "Servidor lotado. Tente de novo em instantes.",
     unknown_ruleset: "Modo de jogo desconhecido.",
-    not_host: "Só o host pode começar.",
+    not_host: "Só o host pode fazer isso.",
     already_started: "A partida já começou.",
     need_two_players: "Precisa de pelo menos 2 jogadores.",
     not_everyone_ready: "Todos precisam estar prontos.",
     automatic_room: "Esta sala começa sozinha.",
+    unknown_map: "Mapa não encontrado.",
+    custom_map_ranked: "Partida ranqueada só usa mapas oficiais.",
   };
   return map[code] ?? code;
 }

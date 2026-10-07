@@ -38,7 +38,7 @@ export function ensureRenderPlayer(out: RenderState, index: number, src: PlayerS
   if (!rp) {
     rp = {
       id: src.id, slot: src.slot, team: src.team, name: src.name, x: 0, z: 0, yaw: 0, flags: 0,
-      cooldownTicks: 0, abilityId: src.abilityId, isLocal, connected: true,
+      cooldownTicks: 0, abilityId: src.abilityId, skinId: undefined, isLocal, connected: true,
     };
     out.players[index] = rp;
   }

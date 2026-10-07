@@ -1,6 +1,6 @@
 import { DEFAULT_LOADOUT, getRuleset, initPhysics, MatchSimulation, type AbilityId, type Loadout, type MatchEvent, type PlayerInput, type Team } from "../src";
 
-export async function createSim(opts: { players?: { id: string; team: Team; ability?: AbilityId | null; loadout?: Partial<Loadout> }[]; ruleset?: string; autoStart?: boolean } = {}) {
+export async function createSim(opts: { players?: { id: string; team: Team; ability?: AbilityId | null; loadout?: Partial<Loadout> }[]; ruleset?: string; autoStart?: boolean; arena?: import("../src").ArenaConfig } = {}) {
   await initPhysics();
   const players = opts.players ?? [
     { id: "a", team: "left" as Team },
@@ -8,6 +8,7 @@ export async function createSim(opts: { players?: { id: string; team: Team; abil
   ];
   return new MatchSimulation({
     ruleset: getRuleset(opts.ruleset ?? "practice"),
+    arena: opts.arena,
     autoStart: opts.autoStart ?? true,
     players: players.map((p, i) => ({
       id: p.id,

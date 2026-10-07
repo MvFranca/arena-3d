@@ -3,7 +3,7 @@ import { DEFAULT_LOADOUT, sanitizeLoadout, type AbilityId, type Loadout, type Ma
 import { useSyncExternalStore } from "react";
 import { loadCameraPrefs, sanitizeCameraPrefs, saveCameraPrefs, type CameraPrefs } from "./cameraPrefs";
 
-export type Screen = "home" | "lobby" | "match" | "result" | "profile" | "queue";
+export type Screen = "home" | "lobby" | "match" | "result" | "profile" | "queue" | "maps";
 
 export interface HudState {
   scoreLeft: number;

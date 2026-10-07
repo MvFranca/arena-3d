@@ -1,4 +1,4 @@
-import { getArena, type ArenaConfig, type MatchEvent } from "@arena/sim";
+import type { ArenaConfig, MatchEvent } from "@arena/sim";
 import * as THREE from "three";
 import type { CameraMode } from "../app/cameraPrefs";
 import { getState } from "../app/store";
@@ -47,10 +47,10 @@ export class GameView {
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly host: SimulationHost,
-    arenaId: string,
+    arena: ArenaConfig,
     private readonly callbacks: GameViewCallbacks = {},
   ) {
-    this.arena = getArena(arenaId);
+    this.arena = arena;
     const t = this.arena.theme;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
@@ -152,7 +152,9 @@ export class GameView {
       let view = this.players.get(p.id);
       if (!view) {
         const color = p.team === "left" ? this.arena.theme.left : this.arena.theme.right;
-        view = new PlayerView(p, color, this.arena.theme.accent);
+        const roster = getState().room?.players.find((r) => r.id === p.id);
+        const skinId = roster?.skinId ?? (p.isLocal ? getState().loadout.skinId : undefined);
+        view = new PlayerView({ ...p, skinId }, color, this.arena.theme.accent);
         this.players.set(p.id, view);
         this.scene.add(view.group);
       }

@@ -1,4 +1,4 @@
-import { sanitizeLoadout, type Loadout } from "@arena/sim";
+import { getArena, isBuiltinArena, sanitizeArena, sanitizeLoadout, type ArenaConfig, type Loadout } from "@arena/sim";
 import { config } from "./config";
 import { log } from "./log";
 import type { MatchResultReport } from "./rooms/MatchRoom";
@@ -34,6 +34,19 @@ class PlatformClient {
     }
   }
 
+  async fetchMap(mapId: string): Promise<ArenaConfig | null> {
+    if (!this.enabled) return null;
+    try {
+      const res = await fetch(`${config.apiUrl}/internal/maps/${encodeURIComponent(mapId)}`, { headers: this.headers() });
+      if (!res.ok) return null;
+      const body = (await res.json()) as { config?: Partial<ArenaConfig> };
+      return sanitizeArena(body.config);
+    } catch (err) {
+      log.warn({ err: (err as Error).message, mapId }, "falha ao buscar mapa");
+      return null;
+    }
+  }
+
   async heartbeat(rooms: number, capacity: number): Promise<void> {
     if (!this.enabled) return;
     try {
@@ -49,3 +62,13 @@ class PlatformClient {
 }
 
 export const platform = new PlatformClient();
+
+/** Builtin local ou fetch na API. Ranked nao aceita custom. */
+export async function resolveRoomMap(mapId: string | undefined, ranked: boolean, fallbackId: string): Promise<{ mapId: string; arena: ArenaConfig }> {
+  const id = mapId && mapId.length > 0 ? mapId : fallbackId;
+  if (isBuiltinArena(id)) return { mapId: id, arena: getArena(id) };
+  if (ranked) throw new Error("custom_map_ranked");
+  const arena = await platform.fetchMap(id);
+  if (!arena) throw new Error("unknown_map");
+  return { mapId: id, arena };
+}

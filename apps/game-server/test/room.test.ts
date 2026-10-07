@@ -143,6 +143,31 @@ describe("reconexao", () => {
   });
 });
 
+describe("mapa da sala", () => {
+  it("create com mapId builtin resolve a arena e o host troca no lobby", async () => {
+    const a = new TestClient(server.port);
+    const b = new TestClient(server.port);
+    await a.connect("Ana");
+    await b.connect("Bia");
+    a.send({ t: "create", rulesetId: "duel", mapId: "rooftop" });
+    await a.waitFor(() => !!a.room);
+    expect(a.room!.mapId).toBe("rooftop");
+    expect(a.room!.arena.id).toBe("rooftop");
+    expect(a.room!.arena.name).toBe("Terraco Solar");
+
+    b.send({ t: "join", code: a.room!.code });
+    await b.waitFor(() => !!b.room && b.room.players.length === 2);
+    b.send({ t: "set_map", mapId: "classic" });
+    await b.waitFor(() => b.errors.some((e) => e.code === "not_host"));
+
+    a.send({ t: "set_map", mapId: "classic" });
+    await a.waitFor(() => a.room?.mapId === "classic");
+    expect(a.room!.arena.id).toBe("classic");
+    a.close();
+    b.close();
+  });
+});
+
 describe("alocacao interna", () => {
   it("POST /internal/rooms cria sala reservada que so aceita convidados com ticket", async () => {
     const res = await fetch(`http://127.0.0.1:${server.port}/internal/rooms`, {

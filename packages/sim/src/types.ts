@@ -1,3 +1,5 @@
+import type { ArenaConfig } from "./config/arenas";
+
 export type Team = "left" | "right";
 
 export type MatchPhase = "lobby" | "countdown" | "playing" | "goal" | "finished";
@@ -99,6 +101,8 @@ export interface PlayerSlotConfig {
 export interface MatchConfig {
   ruleset: Ruleset;
   players: PlayerSlotConfig[];
+  /** Arena ja resolvida. Sem isto, usa getArena(ruleset.arenaId). */
+  arena?: ArenaConfig;
   /** Se true, comeca direto no countdown, sem fase de lobby. */
   autoStart?: boolean;
 }

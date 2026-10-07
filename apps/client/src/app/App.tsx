@@ -1,5 +1,6 @@
 import { HomeScreen } from "./screens/HomeScreen";
 import { LobbyScreen } from "./screens/LobbyScreen";
+import { MapEditorScreen } from "./screens/MapEditorScreen";
 import { MatchScreen } from "./screens/MatchScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { QueueScreen } from "./screens/QueueScreen";
@@ -19,6 +20,8 @@ export function App() {
       return <ProfileScreen />;
     case "queue":
       return <QueueScreen />;
+    case "maps":
+      return <MapEditorScreen />;
     default:
       return <HomeScreen />;
   }

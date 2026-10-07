@@ -12,6 +12,7 @@ export interface RenderPlayer {
   flags: number;
   cooldownTicks: number;
   abilityId: AbilityId | null;
+  skinId?: string;
   isLocal: boolean;
   connected: boolean;
 }

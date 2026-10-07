@@ -1,6 +1,7 @@
-import { getRuleset, RULESETS } from "@arena/sim";
+import { getRuleset, RULESETS, type ArenaConfig } from "@arena/sim";
 import { randomBytes } from "node:crypto";
 import { config } from "../config";
+import { resolveRoomMap } from "../platform";
 import { MatchRoom, type MatchResultReport } from "./MatchRoom";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -26,17 +27,27 @@ export class RoomManager {
     return this.rooms.get(code.toUpperCase());
   }
 
-  create(rulesetId: string, opts: { automatic?: boolean; reserved?: string[]; ticket?: string; ranked?: boolean } = {}): MatchRoom {
+  async create(
+    rulesetId: string,
+    opts: { automatic?: boolean; reserved?: string[]; ticket?: string; ranked?: boolean; mapId?: string; arena?: ArenaConfig } = {},
+  ): Promise<MatchRoom> {
     if (this.rooms.size >= config.maxRooms) throw new Error("server_full");
     if (!RULESETS[rulesetId]) throw new Error("unknown_ruleset");
+    const ruleset = getRuleset(rulesetId);
+    const ranked = opts.ranked ?? false;
+    const resolved = opts.arena
+      ? { mapId: opts.mapId ?? opts.arena.id, arena: opts.arena }
+      : await resolveRoomMap(ranked ? ruleset.arenaId : opts.mapId, ranked, ruleset.arenaId);
     const code = this.uniqueCode();
     const room = new MatchRoom({
       code,
-      ruleset: getRuleset(rulesetId),
+      ruleset,
+      arena: resolved.arena,
+      mapId: resolved.mapId,
       automatic: opts.automatic ?? false,
       reserved: opts.reserved,
       ticket: opts.ticket,
-      ranked: opts.ranked,
+      ranked,
       onEmpty: (r) => this.rooms.delete(r.code),
       onResult: this.onResult,
     });

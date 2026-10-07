@@ -5,7 +5,7 @@ import { Card, Logo, Shell } from "../../ui/common";
 export function ResultScreen() {
   const result = useAppState((s) => s.result);
   const room = useAppState((s) => s.room);
-  const theme = getArena(room?.ruleset.arenaId ?? "classic").theme;
+  const theme = (room?.arena ?? getArena(room?.ruleset.arenaId ?? "classic")).theme;
   if (!result) {
     navigate("home");
     return null;

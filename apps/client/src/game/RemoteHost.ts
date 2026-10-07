@@ -51,7 +51,7 @@ export class RemoteHost implements SimulationHost {
     private readonly localPlayerId: string,
   ) {
     this.localPlayerIds = [localPlayerId];
-    this.sim = new MatchSimulation({ ruleset: room.ruleset, players: [] });
+    this.sim = new MatchSimulation({ ruleset: room.ruleset, arena: room.arena, players: [] });
     this.input = new InputCollector(BINDING_P1, true);
     this.syncRoster(room);
     this.unsubscribe.push(conn.on("snapshot", (s) => this.onSnapshot(s)));

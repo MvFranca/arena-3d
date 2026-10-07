@@ -3,6 +3,7 @@ export * from "./config/tuning";
 export * from "./config/arenas";
 export * from "./config/rulesets";
 export * from "./config/attributes";
+export * from "./config/skins";
 export * from "./rules/clock";
 export { detectGoal } from "./rules/goal";
 export { initPhysics } from "./physics/rapier";

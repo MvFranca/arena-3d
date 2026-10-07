@@ -109,7 +109,34 @@ export const api = {
   servers() {
     return request<{ servers: { id: string; url: string; rooms: number; capacity: number }[] }>("/servers", {}, false);
   },
+  listMaps() {
+    return request<{ maps: CommunityMapListItem[] }>("/maps", {}, false);
+  },
+  getMap(id: string) {
+    return request<CommunityMap>(`/maps/${encodeURIComponent(id)}`, {}, false);
+  },
+  createMap(body: { name: string; config: import("@arena/sim").ArenaConfig }) {
+    return request<CommunityMap>("/maps", { method: "POST", body: JSON.stringify(body) });
+  },
+  deleteMap(id: string) {
+    return request<void>(`/maps/${encodeURIComponent(id)}`, { method: "DELETE" });
+  },
 };
+
+export interface CommunityMapListItem {
+  id: string;
+  name: string;
+  authorName: string;
+  createdAt: string;
+}
+
+export interface CommunityMap {
+  id: string;
+  name: string;
+  config: import("@arena/sim").ArenaConfig;
+  authorId?: string;
+  createdAt: string;
+}
 
 /** Garante sessao: reaproveita token salvo ou cria convidado. Falha em silencio se a API estiver fora. */
 export async function ensureSession(name: string): Promise<boolean> {

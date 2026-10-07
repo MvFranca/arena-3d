@@ -4,6 +4,7 @@ import { connection, defaultGameServerUrl } from "../../net/GameConnection";
 import { api, ensureSession, type MatchHistoryItem, type PlayerStats } from "../../session/api";
 import { CameraSettings } from "../../ui/CameraSettings";
 import { ErrorBanner, Logo } from "../../ui/common";
+import { MapSelect } from "../../ui/MapSelect";
 import { HubScene } from "../../ui/HubScene";
 import { getState, navigate, setState, showError, useAppState } from "../store";
 
@@ -22,6 +23,7 @@ export function HomeScreen() {
   const result = useAppState((s) => s.result);
   const [code, setCode] = useState("");
   const [rulesetId, setRulesetId] = useState("duel");
+  const [mapId, setMapId] = useState("classic");
   const [busy, setBusy] = useState<string | null>(null);
   const [open, setOpen] = useState<ModeId>("treino");
   const [settings, setSettings] = useState(false);
@@ -47,7 +49,7 @@ export function HomeScreen() {
     return n;
   };
 
-  const connectAndJoin = async (action: "create" | "join", payload: { rulesetId?: string; code?: string }) => {
+  const connectAndJoin = async (action: "create" | "join", payload: { rulesetId?: string; code?: string; mapId?: string }) => {
     const n = requireName();
     if (!n) return;
     setBusy(action);
@@ -57,7 +59,7 @@ export function HomeScreen() {
       const ok = await connection.connect(defaultGameServerUrl(), { token: s.token ?? undefined, name: n, loadout: s.loadout });
       if (!ok) throw new Error("Não foi possível conectar ao servidor de jogo.");
       const unsub = connection.on("error", (_c, m) => showError(m));
-      if (action === "create") connection.sendJson({ t: "create", rulesetId: payload.rulesetId! });
+      if (action === "create") connection.sendJson({ t: "create", rulesetId: payload.rulesetId!, mapId: payload.mapId });
       else connection.sendJson({ t: "join", code: payload.code!.toUpperCase() });
       const joined = await waitForRoom(4000);
       unsub();
@@ -198,11 +200,15 @@ export function HomeScreen() {
                   <option value="trios">3v3</option>
                   <option value="squads">4v4</option>
                 </select>
-                <button className="btn btn-secondary shrink-0 px-3 py-1.5 text-sm" disabled={busy !== null} onClick={() => void connectAndJoin("create", { rulesetId })}>
+                <button className="btn btn-secondary shrink-0 px-3 py-1.5 text-sm" disabled={busy !== null} onClick={() => void connectAndJoin("create", { rulesetId, mapId })}>
                   {busy === "create" ? "…" : "Criar"}
                 </button>
               </div>
-              <div className="flex gap-2">
+              <MapSelect value={mapId} onChange={setMapId} apiOnline={apiOnline} />
+              <button className="btn btn-ghost mt-2 w-full py-1.5 text-xs" onClick={() => navigate("maps")}>
+                Criar mapa da comunidade
+              </button>
+              <div className="mt-2 flex gap-2">
                 <input className="input py-1.5 text-sm uppercase tracking-widest" value={code} maxLength={6} placeholder="CÓDIGO" onChange={(e) => setCode(e.target.value.toUpperCase())} />
                 <button className="btn btn-secondary shrink-0 px-3 py-1.5 text-sm" disabled={busy !== null || code.length < 4} onClick={() => void connectAndJoin("join", { code })}>
                   {busy === "join" ? "…" : "Entrar"}

@@ -1,14 +1,16 @@
-import { ARENAS, getAbility, hasAbility } from "@arena/sim";
+import { getAbility, hasAbility } from "@arena/sim";
 import { useEffect, useState } from "react";
 import { connection } from "../../net/GameConnection";
 import { CameraSettings } from "../../ui/CameraSettings";
 import { Card, ErrorBanner, Logo, Shell } from "../../ui/common";
+import { MapSelect } from "../../ui/MapSelect";
 import { navigate, setState, useAppState } from "../store";
 
 export function LobbyScreen() {
   const room = useAppState((s) => s.room);
   const mySlot = useAppState((s) => s.mySlot);
   const error = useAppState((s) => s.error);
+  const apiOnline = useAppState((s) => s.apiOnline);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export function LobbyScreen() {
 
   if (!room) return null;
   const me = room.players.find((p) => p.slot === mySlot);
-  const arena = ARENAS[room.ruleset.arenaId];
+  const arena = room.arena;
   const left = room.players.filter((p) => p.team === "left");
   const right = room.players.filter((p) => p.team === "right");
   const everyoneReady = room.players.length >= 2 && room.players.every((p) => p.ready || p.isHost);
@@ -61,7 +63,7 @@ export function LobbyScreen() {
             </button>
           </div>
           <div className="text-right text-sm text-white/60">
-            <div className="font-semibold text-white">{arena?.name ?? room.ruleset.arenaId}</div>
+            <div className="font-semibold text-white">{arena.name}</div>
             <div>
               {teamSize}v{teamSize} · {room.ruleset.durationSeconds / 60} min
             </div>
@@ -70,9 +72,18 @@ export function LobbyScreen() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <TeamColumn title="Vermelho" color={arena?.theme.left ?? "#ff5f6d"} players={left} capacity={teamSize} mySlot={mySlot} onJoin={() => connection.sendJson({ t: "team", team: "left" })} />
-          <TeamColumn title="Azul" color={arena?.theme.right ?? "#4fc3ff"} players={right} capacity={teamSize} mySlot={mySlot} onJoin={() => connection.sendJson({ t: "team", team: "right" })} />
+          <TeamColumn title="Vermelho" color={arena.theme.left} players={left} capacity={teamSize} mySlot={mySlot} onJoin={() => connection.sendJson({ t: "team", team: "left" })} />
+          <TeamColumn title="Azul" color={arena.theme.right} players={right} capacity={teamSize} mySlot={mySlot} onJoin={() => connection.sendJson({ t: "team", team: "right" })} />
         </div>
+        {me?.isHost && !room.automatic && room.phase === "lobby" && (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-xs uppercase tracking-widest text-white/40">Mapa</span>
+            <MapSelect value={room.mapId} onChange={(id) => connection.sendJson({ t: "set_map", mapId: id })} apiOnline={apiOnline} />
+            <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => navigate("maps")}>
+              Criar mapa
+            </button>
+          </div>
+        )}
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm text-white/50">{room.players.length} / {room.ruleset.maxPlayers} jogadores · precisa de pelo menos 2</div>

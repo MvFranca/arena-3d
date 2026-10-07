@@ -1,4 +1,5 @@
 import { ATTRIBUTE_KEYS, type Attributes, type Loadout, type ResolvedStats } from "../types";
+import { sanitizeSkinId } from "./skins";
 import { ATTR, KICK, PLAYER } from "./tuning";
 
 export const DEFAULT_ATTRIBUTES: Attributes = {
@@ -16,6 +17,7 @@ export const DEFAULT_LOADOUT: Loadout = {
   attributes: { ...DEFAULT_ATTRIBUTES },
   abilityId: "dash",
   archetypeId: "balanced",
+  skinId: "default",
 };
 
 export interface Archetype {
@@ -97,7 +99,7 @@ export function sanitizeLoadout(input: Partial<Loadout> | null | undefined): Loa
     attributes: sanitizeAttributes(input?.attributes),
     abilityId: validAbility,
     archetypeId: typeof input?.archetypeId === "string" ? input.archetypeId.slice(0, 32) : undefined,
-    skinId: typeof input?.skinId === "string" ? input.skinId.slice(0, 32) : undefined,
+    skinId: sanitizeSkinId(input?.skinId),
   };
 }
 

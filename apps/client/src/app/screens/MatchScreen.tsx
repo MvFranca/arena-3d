@@ -33,8 +33,8 @@ export function MatchScreen() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
-  const arenaId = mode === "online" ? (room?.ruleset.arenaId ?? "classic") : getRuleset(getState().localRulesetId).arenaId;
-  const theme = getArena(arenaId).theme;
+  const arena = mode === "online" ? (room?.arena ?? getArena(room?.ruleset.arenaId ?? "classic")) : getArena(getRuleset(getState().localRulesetId).arenaId);
+  const theme = arena.theme;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -114,7 +114,7 @@ export function MatchScreen() {
       });
     };
 
-    const view = new GameView(canvas, host, arenaId, { onEvent, onFrame, ballIndicator: indicatorRef.current });
+    const view = new GameView(canvas, host, arena, { onEvent, onFrame, ballIndicator: indicatorRef.current });
     view.start();
     setHud({ ...initialHud });
 

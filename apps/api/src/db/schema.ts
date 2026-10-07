@@ -57,6 +57,22 @@ export const matchParticipants = pgTable(
   (t) => [primaryKey({ columns: [t.matchId, t.userId] }), index("participants_user_idx").on(t.userId)],
 );
 
+export const maps = pgTable(
+  "maps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 32 }).notNull(),
+    config: jsonb("config").notNull(),
+    public: boolean("public").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("maps_created_idx").on(t.createdAt)],
+);
+
 export const playerStats = pgTable("player_stats", {
   userId: uuid("user_id")
     .primaryKey()
@@ -72,4 +88,4 @@ export const playerStats = pgTable("player_stats", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const schema = { users, loadouts, matches, matchParticipants, playerStats };
+export const schema = { users, loadouts, matches, matchParticipants, playerStats, maps };

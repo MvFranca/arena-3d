@@ -53,7 +53,7 @@ export class MatchSimulation {
 
   constructor(config: MatchConfig) {
     this.ruleset = config.ruleset;
-    this.arena = getArena(config.ruleset.arenaId);
+    this.arena = config.arena ?? getArena(config.ruleset.arenaId);
     this.clockTicksRemaining = secondsToTicks(config.ruleset.durationSeconds);
     this.world = createArenaWorld(this.arena);
     this.eventQueue = new RAPIER.EventQueue(true);

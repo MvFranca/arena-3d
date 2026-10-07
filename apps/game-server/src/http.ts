@@ -64,7 +64,7 @@ export function createHttpHandler(rooms: RoomManager, game: GameServer) {
       try {
         const body = await readBody(req);
         const ticket = randomBytes(12).toString("base64url");
-        const room = rooms.create(String(body.rulesetId ?? "duel"), {
+        const room = await rooms.create(String(body.rulesetId ?? "duel"), {
           automatic: true,
           reserved: Array.isArray(body.playerIds) ? body.playerIds.map(String) : [],
           ticket,

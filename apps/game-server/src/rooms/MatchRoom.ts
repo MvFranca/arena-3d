@@ -4,6 +4,7 @@ import {
   MatchSimulation,
   SNAPSHOT_EVERY_TICKS,
   createEmptyMatchState,
+  type ArenaConfig,
   type MatchEvent,
   type MatchState,
   type PlayerInput,
@@ -52,6 +53,8 @@ export interface MatchResultReport {
 export interface MatchRoomOptions {
   code: string;
   ruleset: Ruleset;
+  arena: ArenaConfig;
+  mapId: string;
   automatic: boolean;
   reserved?: string[];
   ticket?: string;
@@ -67,6 +70,8 @@ export interface MatchRoomOptions {
 export class MatchRoom {
   readonly code: string;
   readonly ruleset: Ruleset;
+  arena: ArenaConfig;
+  mapId: string;
   automatic: boolean;
   readonly ranked: boolean;
   private readonly reserved: Set<string> | null;
@@ -88,13 +93,15 @@ export class MatchRoom {
   constructor(opts: MatchRoomOptions) {
     this.code = opts.code;
     this.ruleset = opts.ruleset;
+    this.arena = opts.arena;
+    this.mapId = opts.mapId;
     this.automatic = opts.automatic;
     this.ranked = opts.ranked ?? false;
     this.reserved = opts.reserved ? new Set(opts.reserved) : null;
     this.ticket = opts.ticket ?? null;
     this.onEmpty = opts.onEmpty;
     this.onResult = opts.onResult;
-    this.sim = new MatchSimulation({ ruleset: opts.ruleset, players: [] });
+    this.sim = new MatchSimulation({ ruleset: opts.ruleset, arena: opts.arena, players: [] });
   }
 
   get playerCount(): number {
@@ -210,6 +217,27 @@ export class MatchRoom {
     this.broadcastRoom();
   }
 
+  setMap(playerId: string, mapId: string, arena: ArenaConfig): string | null {
+    if (this.automatic || this.ranked) return "automatic_room";
+    if (playerId !== this.hostId) return "not_host";
+    if (this.sim.phase !== "lobby") return "already_started";
+    this.applyArena(mapId, arena);
+    this.broadcastRoom();
+    return null;
+  }
+
+  private applyArena(mapId: string, arena: ArenaConfig): void {
+    this.mapId = mapId;
+    this.arena = arena;
+    const old = this.sim;
+    this.sim = new MatchSimulation({ ruleset: this.ruleset, arena, players: [] });
+    for (const s of this.slots.values()) {
+      this.sim.addPlayer({ id: s.session.playerId, slot: s.slot, team: s.team, name: s.session.name, loadout: s.session.loadout });
+      this.sim.setConnected(s.session.playerId, s.connected);
+    }
+    old.dispose();
+  }
+
   requestStart(playerId: string): string | null {
     if (this.automatic) return "automatic_room";
     if (playerId !== this.hostId) return "not_host";
@@ -309,7 +337,7 @@ export class MatchRoom {
       const report: MatchResultReport = {
         roomCode: this.code,
         rulesetId: this.ruleset.id,
-        arenaId: this.ruleset.arenaId,
+        arenaId: this.mapId,
         startedAt: this.startedAt,
         endedAt: this.finishedAt,
         scoreLeft: ev.scoreLeft,
@@ -335,7 +363,7 @@ export class MatchRoom {
   private resetToLobby(): void {
     this.finishedAt = null;
     const old = this.sim;
-    this.sim = new MatchSimulation({ ruleset: this.ruleset, players: [] });
+    this.sim = new MatchSimulation({ ruleset: this.ruleset, arena: this.arena, players: [] });
     for (const s of this.slots.values()) {
       s.ready = false;
       s.inputs.clear();
@@ -379,7 +407,7 @@ export class MatchRoom {
         archetypeId: s.session.loadout.archetypeId,
         skinId: s.session.loadout.skinId,
       }));
-    return { code: this.code, ruleset: this.ruleset, phase: this.sim.phase, players, automatic: this.automatic };
+    return { code: this.code, ruleset: this.ruleset, arena: this.arena, mapId: this.mapId, phase: this.sim.phase, players, automatic: this.automatic };
   }
 
   broadcastRoom(): void {

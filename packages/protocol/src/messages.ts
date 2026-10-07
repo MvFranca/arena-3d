@@ -1,4 +1,4 @@
-import type { AbilityId, Attributes, Loadout, MatchEvent, Ruleset, Team } from "@arena/sim";
+import type { AbilityId, ArenaConfig, Attributes, Loadout, MatchEvent, Ruleset, Team } from "@arena/sim";
 
 /** Jogador como aparece no roster da sala. O loadout aqui e o que o servidor congelou. */
 export interface RosterPlayer {
@@ -20,6 +20,10 @@ export type RoomPhase = "lobby" | "countdown" | "playing" | "goal" | "finished";
 export interface RoomInfo {
   code: string;
   ruleset: Ruleset;
+  /** Arena ja resolvida (builtin ou custom). */
+  arena: ArenaConfig;
+  /** Id builtin ou uuid do mapa da API. */
+  mapId: string;
   phase: RoomPhase;
   players: RosterPlayer[];
   /** Partida ranqueada/matchmaking: ninguem controla o start, o servidor inicia sozinho. */
@@ -40,11 +44,12 @@ export type ClientMessage =
       /** Para reconectar na mesma vaga. */
       sessionId?: string;
     }
-  | { t: "create"; rulesetId: string }
+  | { t: "create"; rulesetId: string; mapId?: string }
   | { t: "join"; code: string; ticket?: string }
   | { t: "team"; team: Team }
   | { t: "ready"; ready: boolean }
   | { t: "start" }
+  | { t: "set_map"; mapId: string }
   | { t: "leave" };
 
 // ------------------------------------------------------------- servidor -> cliente
