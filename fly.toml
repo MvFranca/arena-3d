@@ -1,34 +1,35 @@
-# fly.toml — game server Arena
-# Deploy: fly launch (primeira vez) ou fly deploy
-# Região GRU = São Paulo (menor latência no BR)
+# fly.toml app configuration file generated for arena-3d on 2026-10-07T02:40:52Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "arena-game"
-primary_region = "gru"
+app = 'arena-3d'
+primary_region = 'gru'
 
 [build]
 
 [env]
-  ALLOW_ANON = "true"
-  PORT = "8080"
-  PUBLIC_WS_URL = "wss://arena-game.fly.dev"
+  ALLOW_ANON = 'true'
+  PORT = '8080'
+  PUBLIC_WS_URL = 'wss://arena-game.fly.dev'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  # Não dorme no meio da partida
-  auto_stop_machines = "off"
+  auto_stop_machines = 'off'
   auto_start_machines = true
   min_machines_running = 1
-  processes = ["app"]
+  processes = ['app']
 
   [[http_service.checks]]
-    interval = "15s"
-    timeout = "2s"
-    grace_period = "20s"
-    method = "GET"
-    path = "/health"
+    interval = '15s'
+    timeout = '2s'
+    grace_period = '20s'
+    method = 'GET'
+    path = '/health'
 
 [[vm]]
-  memory = "512mb"
-  cpu_kind = "shared"
+  memory = '512mb'
+  cpu_kind = 'shared'
   cpus = 1
+  memory_mb = 512
