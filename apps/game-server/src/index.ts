@@ -18,6 +18,7 @@ async function main(): Promise<void> {
   const http = createServer();
   const wss = new WebSocketServer({ server: http, maxPayload: 4096 });
   const game = new GameServer(wss, rooms);
+  rooms.nowTick = () => game.tick;
   http.on("request", createHttpHandler(rooms, game));
 
   // Loop de ticks com relogio monotonico e acumulador. Nao usa setInterval.

@@ -49,4 +49,9 @@ export class ClockSync {
   seed(serverTick: number, nowMs: number): void {
     if (this.offsetTicks === null) this.offsetTicks = serverTick - nowMs / DT_MS;
   }
+
+  /** Alinha o relogio ao tick autoritativo da partida (snapshot). */
+  resync(serverTick: number, nowMs: number): void {
+    this.offsetTicks = serverTick - nowMs / DT_MS;
+  }
 }

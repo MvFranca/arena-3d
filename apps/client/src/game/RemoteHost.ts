@@ -144,6 +144,10 @@ export class RemoteHost implements SimulationHost {
     if (s.tick <= this.lastAppliedSnapshotTick) return;
     this.lastAppliedSnapshotTick = s.tick;
 
+    const now = performance.now();
+    const estimated = this.conn.clock.serverTickNow(now);
+    if (Math.abs(estimated - s.tick) > 30) this.conn.clock.resync(s.tick, now);
+
     // Converte para MatchState usando o roster para mapear slot -> id.
     const a = this.authoritative;
     a.tick = s.tick;

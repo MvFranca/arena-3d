@@ -212,7 +212,8 @@ export class GameServer {
     } else if (op === OP.PING) {
       const { clientTimeMs } = decodePing(reader);
       const fraction = Math.min(0.999, (performance.now() - this.tickStartMs) / DT_MS);
-      session.sendBinary(encodePong(this.writer, clientTimeMs, this.tick, fraction));
+      const tick = session.room?.simTick ?? this.tick;
+      session.sendBinary(encodePong(this.writer, clientTimeMs, tick, fraction));
     }
   }
 

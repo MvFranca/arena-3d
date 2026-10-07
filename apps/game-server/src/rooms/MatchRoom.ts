@@ -59,6 +59,8 @@ export interface MatchRoomOptions {
   reserved?: string[];
   ticket?: string;
   ranked?: boolean;
+  /** Tick atual do processo; a sim da sala nasce alinhada a ele. */
+  nowTick(): number;
   onEmpty(room: MatchRoom): void;
   onResult(report: MatchResultReport): void;
 }
@@ -88,6 +90,7 @@ export class MatchRoom {
   readonly createdAt = Date.now();
   private readonly onEmpty: (room: MatchRoom) => void;
   private readonly onResult: (report: MatchResultReport) => void;
+  private readonly nowTick: () => number;
   private destroyed = false;
 
   constructor(opts: MatchRoomOptions) {
@@ -101,7 +104,8 @@ export class MatchRoom {
     this.ticket = opts.ticket ?? null;
     this.onEmpty = opts.onEmpty;
     this.onResult = opts.onResult;
-    this.sim = new MatchSimulation({ ruleset: opts.ruleset, arena: opts.arena, players: [] });
+    this.nowTick = opts.nowTick;
+    this.sim = this.spawnSim();
   }
 
   get playerCount(): number {
@@ -110,6 +114,11 @@ export class MatchRoom {
 
   get phase() {
     return this.sim.phase;
+  }
+
+  /** Tick da partida; o cliente usa no PONG para numerar inputs. */
+  get simTick(): number {
+    return this.sim.tick;
   }
 
   // ------------------------------------------------------------- jogadores
@@ -230,7 +239,7 @@ export class MatchRoom {
     this.mapId = mapId;
     this.arena = arena;
     const old = this.sim;
-    this.sim = new MatchSimulation({ ruleset: this.ruleset, arena, players: [] });
+    this.sim = this.spawnSim();
     for (const s of this.slots.values()) {
       this.sim.addPlayer({ id: s.session.playerId, slot: s.slot, team: s.team, name: s.session.name, loadout: s.session.loadout });
       this.sim.setConnected(s.session.playerId, s.connected);
@@ -363,7 +372,7 @@ export class MatchRoom {
   private resetToLobby(): void {
     this.finishedAt = null;
     const old = this.sim;
-    this.sim = new MatchSimulation({ ruleset: this.ruleset, arena: this.arena, players: [] });
+    this.sim = this.spawnSim();
     for (const s of this.slots.values()) {
       s.ready = false;
       s.inputs.clear();
@@ -375,6 +384,12 @@ export class MatchRoom {
     this.automatic = false; // revanche fica na mao do host
     this.broadcastRoom();
     for (const s of this.slots.values()) this.sendFullSnapshot(s.session);
+  }
+
+  private spawnSim(): MatchSimulation {
+    const sim = new MatchSimulation({ ruleset: this.ruleset, arena: this.arena, players: [] });
+    sim.tick = this.nowTick();
+    return sim;
   }
 
   // -------------------------------------------------------------- rede

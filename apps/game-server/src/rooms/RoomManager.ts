@@ -8,6 +8,7 @@ const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 export class RoomManager {
   private readonly rooms = new Map<string, MatchRoom>();
+  nowTick: () => number = () => 0;
 
   constructor(private readonly onResult: (report: MatchResultReport) => void) {}
 
@@ -48,6 +49,7 @@ export class RoomManager {
       reserved: opts.reserved,
       ticket: opts.ticket,
       ranked,
+      nowTick: () => this.nowTick(),
       onEmpty: (r) => this.rooms.delete(r.code),
       onResult: this.onResult,
     });

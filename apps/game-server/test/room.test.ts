@@ -94,6 +94,41 @@ describe("inputs e autoridade", () => {
     a.close();
     b.close();
   });
+
+  it("input ainda move depois que o processo ja rodou muitos ticks", async () => {
+    server.tick(50_000);
+    const a = new TestClient(server.port);
+    const b = new TestClient(server.port);
+    await a.connect("Ana");
+    await b.connect("Bia");
+    a.send({ t: "create", rulesetId: "duel" });
+    await a.waitFor(() => !!a.room);
+    b.send({ t: "join", code: a.room!.code });
+    await b.waitFor(() => !!b.room && b.room.players.length === 2);
+    a.ping();
+    await a.waitFor(() => a.lastPongTick >= 0);
+    expect(a.lastPongTick).toBeGreaterThan(49_000);
+
+    b.send({ t: "ready", ready: true });
+    await a.waitFor(() => !!a.room?.players.find((p) => p.name === "Bia")?.ready);
+    a.send({ t: "start" });
+    await a.waitFor(() => a.room?.phase === "countdown");
+    server.tick(TICK_RATE * 3 + 2);
+    await sleep(20);
+
+    a.ping();
+    await a.waitFor(() => a.lastPongTick > 50_000);
+    const before = a.snapshots[a.snapshots.length - 1]!.players.find((p) => p.slot === a.mySlot)!;
+    const base = a.lastPongTick;
+    for (let i = 0; i < 30; i++) a.sendInput(base + 2 + i, { dirZ: 1 });
+    await sleep(30);
+    server.tick(40);
+    await sleep(30);
+    const after = a.snapshots[a.snapshots.length - 1]!.players.find((p) => p.slot === a.mySlot)!;
+    expect(after.z).toBeGreaterThan(before.z + 1);
+    a.close();
+    b.close();
+  });
 });
 
 describe("reconexao", () => {

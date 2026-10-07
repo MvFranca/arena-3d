@@ -1,4 +1,4 @@
-import { BufferWriter, decodeSnapshot, encodeInputPacket, OP, parseServerMessage, PROTOCOL_VERSION, readOpcode, type RoomInfo, type ServerMessage, type Snapshot, type TimedInput } from "@arena/protocol";
+import { BufferWriter, decodePong, decodeSnapshot, encodeInputPacket, encodePing, OP, parseServerMessage, PROTOCOL_VERSION, readOpcode, type RoomInfo, type ServerMessage, type Snapshot, type TimedInput } from "@arena/protocol";
 import { initPhysics } from "@arena/sim";
 import { createServer, type Server } from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
@@ -24,6 +24,7 @@ export async function startServer(): Promise<TestServer> {
   const http: Server = createServer();
   const wss = new WebSocketServer({ server: http });
   const game = new GameServer(wss, rooms);
+  rooms.nowTick = () => game.tick;
   http.on("request", createHttpHandler(rooms, game));
   await new Promise<void>((r) => http.listen(0, r));
   const port = (http.address() as { port: number }).port;
@@ -57,6 +58,7 @@ export class TestClient {
   events: any[] = [];
   errors: { code: string; message: string }[] = [];
   left = 0;
+  lastPongTick = -1;
   private readonly writer = new BufferWriter(64);
   private seq = 0;
 
@@ -69,6 +71,7 @@ export class TestClient {
       if (isBinary) {
         const { op, reader } = readOpcode(new Uint8Array(data as ArrayBuffer));
         if (op === OP.SNAPSHOT) this.snapshots.push(decodeSnapshot(reader));
+        else if (op === OP.PONG) this.lastPongTick = decodePong(reader).serverTick;
         return;
       }
       const msg = parseServerMessage(data.toString());
@@ -111,6 +114,10 @@ export class TestClient {
   sendInput(tick: number, partial: Partial<TimedInput>): void {
     const inp: TimedInput = { seq: ++this.seq, tick, dirX: 0, dirZ: 0, kick: false, ability: false, ...partial };
     this.ws.send(encodeInputPacket(this.writer, [inp]));
+  }
+
+  ping(): void {
+    this.ws.send(encodePing(this.writer, Date.now()));
   }
 
   get lastSeq(): number {
