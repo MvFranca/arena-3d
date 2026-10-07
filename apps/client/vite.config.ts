@@ -10,9 +10,11 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        manualChunks: {
-          three: ["three"],
-          rapier: ["@dimforge/rapier3d-compat"],
+        // Função (não array): com pnpm o Rapier só existe em @arena/sim;
+        // o formato array tenta resolver o pacote a partir do client e quebra no CI.
+        manualChunks(id) {
+          if (id.includes("node_modules/three")) return "three";
+          if (id.includes("rapier3d-compat")) return "rapier";
         },
       },
     },
