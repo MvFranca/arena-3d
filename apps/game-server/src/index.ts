@@ -61,7 +61,7 @@ async function main(): Promise<void> {
     setInterval(beat, 5000);
   }
 
-  http.listen(config.port, () => {
+  http.listen(config.port, "0.0.0.0", () => {
     log.info({ port: config.port, publicUrl: config.publicUrl, api: platform.enabled ? config.apiUrl : "isolado", anon: config.allowAnonymous }, "game server pronto");
   });
 
