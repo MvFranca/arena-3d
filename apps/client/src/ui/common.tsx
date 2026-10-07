@@ -2,9 +2,13 @@ import type { ReactNode } from "react";
 
 export function Shell({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
-    <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-[#0b1020]">
+    <div className="relative h-full w-full overflow-hidden bg-[#0b1020]">
       <Backdrop />
-      <div className={`relative z-10 w-full ${wide ? "max-w-5xl" : "max-w-xl"} px-4`}>{children}</div>
+      <div className="relative z-10 h-full overflow-y-auto">
+        <div className="flex min-h-full items-center justify-center px-4 py-8">
+          <div className={`w-full ${wide ? "max-w-5xl" : "max-w-xl"}`}>{children}</div>
+        </div>
+      </div>
     </div>
   );
 }
