@@ -1,0 +1,11 @@
+export * from "./types";
+export * from "./config/tuning";
+export * from "./config/arenas";
+export * from "./config/rulesets";
+export * from "./config/attributes";
+export * from "./rules/clock";
+export { detectGoal } from "./rules/goal";
+export { initPhysics } from "./physics/rapier";
+export { MatchSimulation } from "./MatchSimulation";
+export { getAbility, hasAbility, listAbilities, registerAbility } from "./abilities";
+export type { AbilityContext, AbilityDefinition } from "./abilities";
