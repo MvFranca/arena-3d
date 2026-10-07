@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: arena-3d
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: ALLOW_ANON
+        value: "true"
+      - key: PUBLIC_WS_URL
+        value: wss://arena-3d.onrender.com
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=384
