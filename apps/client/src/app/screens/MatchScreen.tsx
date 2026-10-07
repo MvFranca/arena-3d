@@ -1,5 +1,5 @@
 import { getAbility, getArena, getRuleset, secondsToTicks, type MatchEvent, type Team } from "@arena/sim";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BINDING_P1, BINDING_P2 } from "../../game/InputCollector";
 import { LocalHost } from "../../game/LocalHost";
 import { RemoteHost } from "../../game/RemoteHost";
@@ -7,14 +7,32 @@ import type { RenderState, SimulationHost } from "../../game/types";
 import { connection } from "../../net/GameConnection";
 import { gameAudio } from "../../render/Audio";
 import { GameView } from "../../render/GameView";
+import { CameraSettings } from "../../ui/CameraSettings";
 import { Hud } from "../../ui/Hud";
-import { getState, initialHud, navigate, setHud, setState, useAppState, type MatchResult } from "../store";
+import { getState, initialHud, navigate, setHud, setState, toggleCameraMode, useAppState, type MatchResult } from "../store";
 
 export function MatchScreen() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const indicatorRef = useRef<HTMLDivElement>(null);
   const mode = useAppState((s) => s.mode);
   const room = useAppState((s) => s.room);
   const connected = useAppState((s) => s.hud.connected);
+  const localTwo = useAppState((s) => s.localTwoPlayers);
+  const [cameraPanel, setCameraPanel] = useState(false);
+  const cameraLocked = mode === "local" && localTwo;
+
+  // Atalhos da camera: C alterna o modo, V abre o painel rapido. Fora dos inputs de texto.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.repeat) return;
+      if (e.code === "KeyC") toggleCameraMode();
+      else if (e.code === "KeyV") setCameraPanel((v) => !v);
+      else if (e.code === "Escape") setCameraPanel(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const arenaId = mode === "online" ? (room?.ruleset.arenaId ?? "classic") : getRuleset(getState().localRulesetId).arenaId;
   const theme = getArena(arenaId).theme;
 
@@ -96,7 +114,7 @@ export function MatchScreen() {
       });
     };
 
-    const view = new GameView(canvas, host, arenaId, { onEvent, onFrame });
+    const view = new GameView(canvas, host, arenaId, { onEvent, onFrame, ballIndicator: indicatorRef.current });
     view.start();
     setHud({ ...initialHud });
 
@@ -122,7 +140,25 @@ export function MatchScreen() {
   return (
     <div className="relative h-full w-full bg-[#0b1020]">
       <canvas ref={canvasRef} className="h-full w-full" />
-      <Hud leftColor={theme.left} rightColor={theme.right} onLeave={leave} showPing={mode === "online"} />
+      {/* Seta para a bola fora do enquadramento (so em terceira pessoa); posicionada pelo GameView. */}
+      <div ref={indicatorRef} data-testid="ball-indicator" className="pointer-events-none absolute left-0 top-0 opacity-0 transition-opacity duration-150 will-change-transform">
+        <div className="flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-xs font-semibold text-white shadow-lg ring-1 ring-white/20">
+          <span className="h-2.5 w-2.5 rounded-full bg-white shadow-[0_0_8px_#fff]" />
+          <span aria-hidden>➜</span>
+        </div>
+      </div>
+      <Hud leftColor={theme.left} rightColor={theme.right} onLeave={leave} showPing={mode === "online"} cameraLocked={cameraLocked} onToggleCameraPanel={() => setCameraPanel((v) => !v)} />
+      {cameraPanel && (
+        <div className="glass absolute right-5 top-24 w-80 rounded-2xl p-4 shadow-2xl" data-testid="camera-panel">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="font-display text-sm font-bold">Câmera</h3>
+            <button className="btn btn-ghost px-2 py-0.5 text-xs" onClick={() => setCameraPanel(false)}>
+              fechar (V)
+            </button>
+          </div>
+          <CameraSettings compact />
+        </div>
+      )}
       {mode === "online" && !connected && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40">
           <div className="glass rounded-2xl px-6 py-4 text-center">

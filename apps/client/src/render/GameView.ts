@@ -1,16 +1,21 @@
 import { getArena, type ArenaConfig, type MatchEvent } from "@arena/sim";
 import * as THREE from "three";
+import type { CameraMode } from "../app/cameraPrefs";
+import { getState } from "../app/store";
 import { createRenderState, type RenderState, type SimulationHost } from "../game/types";
 import { ArenaView } from "./ArenaView";
 import { gameAudio } from "./Audio";
 import { BallView } from "./BallView";
-import { CameraRig } from "./CameraRig";
+import { CameraRig, type CameraFocus } from "./CameraRig";
+import { cameraState } from "./cameraState";
 import { PlayerView } from "./PlayerView";
 import { ImpactRings, ParticleSystem } from "./Vfx";
 
 export interface GameViewCallbacks {
   onFrame?(state: RenderState, nowMs: number): void;
   onEvent?(ev: MatchEvent, state: RenderState): void;
+  /** Elemento DOM da seta "bola fora da tela". Manipulado direto, sem React no frame. */
+  ballIndicator?: HTMLElement | null;
 }
 
 /**
@@ -35,6 +40,9 @@ export class GameView {
   private running = false;
   private readonly resizeObserver: ResizeObserver;
   private lastGoalPhase = false;
+  private readonly focus: CameraFocus = { x: 0, z: 0, yaw: 0 };
+  private readonly ndc = new THREE.Vector3();
+  private indicatorVisible = false;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -164,17 +172,80 @@ export class GameView {
     this.rings.update(dt);
     if (this.flashMat.opacity > 0) this.flashMat.opacity = Math.max(0, this.flashMat.opacity - dt * 2.5);
 
-    const focus = s.players.find((p) => p.id === s.focusPlayerId) ?? null;
-    this.rig.update(dt, focus, s.ball);
-
-    const isGoal = s.phase === "goal";
-    if (isGoal && !this.lastGoalPhase) {
-      // confete continuo durante a comemoracao e disparado pelo evento; aqui so camera
+    // Camera: preferencias lidas a cada frame, entao sliders e tecla C valem na hora.
+    const prefs = getState().camera;
+    const twoLocal = this.host.localPlayerIds.length > 1;
+    const effective: CameraMode = prefs.mode === "thirdPerson" && !twoLocal ? "thirdPerson" : "arena";
+    cameraState.forcedArena = prefs.mode === "thirdPerson" && twoLocal;
+    const focusPlayer = s.players.find((p) => p.id === s.focusPlayerId) ?? null;
+    let focus: CameraFocus | null = null;
+    if (focusPlayer) {
+      this.focus.x = focusPlayer.x;
+      this.focus.z = focusPlayer.z;
+      this.focus.yaw = this.players.get(focusPlayer.id)?.visualYaw ?? focusPlayer.yaw;
+      focus = this.focus;
     }
-    this.lastGoalPhase = isGoal;
+    this.rig.update(dt, focus, s.ball, prefs, effective);
+    cameraState.effectiveMode = this.rig.currentMode;
+    cameraState.yaw = this.rig.viewYaw;
+
+    this.lastGoalPhase = s.phase === "goal";
 
     this.callbacks.onFrame?.(s, now);
     this.renderer.render(this.scene, this.rig.camera);
+    this.updateBallIndicator(s);
+  }
+
+  /** Seta na borda da tela apontando para a bola quando ela sai do enquadramento. */
+  private updateBallIndicator(s: RenderState): void {
+    const el = this.callbacks.ballIndicator;
+    if (!el) return;
+    if (this.rig.currentMode !== "thirdPerson") {
+      if (this.indicatorVisible) {
+        el.style.opacity = "0";
+        this.indicatorVisible = false;
+      }
+      return;
+    }
+    this.ndc.set(s.ball.x, s.ball.y, s.ball.z).project(this.rig.camera);
+    const behind = this.ndc.z > 1;
+    let nx = this.ndc.x;
+    let ny = this.ndc.y;
+    if (behind) {
+      nx = -nx;
+      ny = -ny;
+    }
+    const inside = !behind && Math.abs(nx) <= 0.95 && Math.abs(ny) <= 0.9;
+    if (inside) {
+      if (this.indicatorVisible) {
+        el.style.opacity = "0";
+        this.indicatorVisible = false;
+      }
+      return;
+    }
+    // Projeta a direcao na borda do retangulo [-0.92, 0.92] x [-0.86, 0.86].
+    const len = Math.hypot(nx, ny) || 1;
+    let dx = nx / len;
+    let dy = ny / len;
+    if (behind && len < 1e-3) {
+      dx = 0;
+      dy = -1;
+    }
+    const sx = 0.92 / Math.max(Math.abs(dx), 1e-6);
+    const sy = 0.86 / Math.max(Math.abs(dy), 1e-6);
+    const sc = Math.min(sx, sy);
+    const ex = dx * sc;
+    const ey = dy * sc;
+    const w = this.canvas.clientWidth;
+    const h = this.canvas.clientHeight;
+    const px = ((ex + 1) / 2) * w;
+    const py = ((1 - ey) / 2) * h;
+    const angle = Math.atan2(-dy, dx);
+    el.style.transform = `translate(${px.toFixed(1)}px, ${py.toFixed(1)}px) translate(-50%, -50%) rotate(${angle.toFixed(3)}rad)`;
+    if (!this.indicatorVisible) {
+      el.style.opacity = "1";
+      this.indicatorVisible = true;
+    }
   }
 
   private handleEvent(ev: MatchEvent): void {
@@ -187,7 +258,7 @@ export class GameView {
         this.particles.burst(b.x, b.y, b.z, Math.min(30, 8 + ev.power * 0.6), 0xffffff, 4 + ev.power * 0.15, 0.4, 0.7, 0.4);
         this.rings.spawn(b.x, b.z, p?.team === "left" ? t.left : t.right, 0.6);
         gameAudio.kick(ev.power);
-        this.rig.addShake(Math.min(0.5, ev.power / 80));
+        this.rig.addShake(Math.min(0.5, ev.power / 80) * (this.rig.currentMode === "thirdPerson" ? 0.5 : 1));
         break;
       }
       case "ball_bounce":
@@ -249,6 +320,9 @@ export class GameView {
   dispose(): void {
     this.stop();
     this.resizeObserver.disconnect();
+    cameraState.effectiveMode = "arena";
+    cameraState.forcedArena = false;
+    cameraState.yaw = -Math.PI / 2;
     for (const v of this.players.values()) v.dispose();
     this.players.clear();
     this.renderer.dispose();

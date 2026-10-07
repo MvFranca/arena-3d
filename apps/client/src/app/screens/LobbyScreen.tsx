@@ -1,6 +1,7 @@
 import { ARENAS, getAbility, hasAbility } from "@arena/sim";
 import { useEffect, useState } from "react";
 import { connection } from "../../net/GameConnection";
+import { CameraSettings } from "../../ui/CameraSettings";
 import { Card, ErrorBanner, Logo, Shell } from "../../ui/common";
 import { navigate, setState, useAppState } from "../store";
 
@@ -89,6 +90,13 @@ export function LobbyScreen() {
             {room.automatic && <span className="text-sm text-white/60">A partida começa quando a sala encher.</span>}
           </div>
         </div>
+      </Card>
+      <Card className="mt-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="font-display text-base font-bold">Sua câmera</h3>
+          <span className="text-xs text-white/40">só você vê · troque com C na partida</span>
+        </div>
+        <CameraSettings compact />
       </Card>
     </Shell>
   );

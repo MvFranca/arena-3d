@@ -1,4 +1,5 @@
 import type { PlayerInput } from "@arena/sim";
+import { cameraState } from "../render/cameraState";
 
 export interface KeyBinding {
   up: string[];
@@ -30,7 +31,8 @@ export const BINDING_P2: KeyBinding = {
 
 /**
  * Le teclado (e o primeiro gamepad) e devolve um PlayerInput por amostra.
- * Direcao e relativa a camera: direita da tela = +X, cima da tela = -Z.
+ * Direcao e relativa a camera. No modo arena: direita da tela = +X, cima = -Z.
+ * No modo terceira pessoa a base gira junto com o yaw da camera (ver cameraState).
  */
 export class InputCollector {
   private readonly pressed = new Set<string>();
@@ -95,6 +97,18 @@ export class InputCollector {
     if (len > 1) {
       dirX /= len;
       dirZ /= len;
+    }
+
+    // Terceira pessoa: "cima" na tela vira a frente da camera, "direita" vira o strafe.
+    // Usa o yaw que a camera ja aplicou neste frame, entao a troca de modo nao atrasa.
+    if (cameraState.effectiveMode === "thirdPerson" && (dirX !== 0 || dirZ !== 0)) {
+      const fx = Math.cos(cameraState.yaw);
+      const fz = Math.sin(cameraState.yaw);
+      const screenX = dirX;
+      const screenUp = -dirZ;
+      // right = forward x up = (-fz, fx)
+      dirX = -fz * screenX + fx * screenUp;
+      dirZ = fx * screenX + fz * screenUp;
     }
     return { seq: ++this.seq, dirX, dirZ, kick, ability };
   }

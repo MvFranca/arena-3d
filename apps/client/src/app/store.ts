@@ -1,6 +1,7 @@
 import type { RoomInfo } from "@arena/protocol";
 import { DEFAULT_LOADOUT, sanitizeLoadout, type AbilityId, type Loadout, type MatchPhase, type Team } from "@arena/sim";
 import { useSyncExternalStore } from "react";
+import { loadCameraPrefs, sanitizeCameraPrefs, saveCameraPrefs, type CameraPrefs } from "./cameraPrefs";
 
 export type Screen = "home" | "lobby" | "match" | "result" | "profile" | "queue";
 
@@ -44,6 +45,7 @@ export interface AppState {
   user: SessionUser | null;
   apiOnline: boolean;
   loadout: Loadout;
+  camera: CameraPrefs;
   mode: "local" | "online";
   localTwoPlayers: boolean;
   localRulesetId: string;
@@ -94,6 +96,7 @@ let state: AppState = {
   user: null,
   apiOnline: false,
   loadout: loadLocalLoadout(),
+  camera: loadCameraPrefs(),
   mode: "local",
   localTwoPlayers: false,
   localRulesetId: "practice",
@@ -118,6 +121,7 @@ export function setState(patch: Partial<AppState> | ((s: AppState) => Partial<Ap
   state = { ...state, ...p };
   if (p.name !== undefined) localStorage.setItem(LS_NAME, p.name);
   if (p.loadout !== undefined) localStorage.setItem(LS_LOADOUT, JSON.stringify(p.loadout));
+  if (p.camera !== undefined) saveCameraPrefs(p.camera);
   if (p.token !== undefined) {
     if (p.token) localStorage.setItem(LS_TOKEN, p.token);
     else localStorage.removeItem(LS_TOKEN);
@@ -146,6 +150,15 @@ export function subscribe(l: () => void): () => void {
 
 export function useAppState<T>(selector: (s: AppState) => T): T {
   return useSyncExternalStore(subscribe, () => selector(state), () => selector(state));
+}
+
+/** Ajusta a camera ao vivo: o renderer le o store no proximo frame. */
+export function setCameraPrefs(patch: Partial<CameraPrefs>): void {
+  setState({ camera: sanitizeCameraPrefs({ ...state.camera, ...patch }) });
+}
+
+export function toggleCameraMode(): void {
+  setCameraPrefs({ mode: state.camera.mode === "arena" ? "thirdPerson" : "arena" });
 }
 
 export function navigate(screen: Screen): void {

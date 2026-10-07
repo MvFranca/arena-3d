@@ -1,12 +1,25 @@
 import { formatClock, getAbility, TICK_RATE } from "@arena/sim";
 import { useEffect, useState } from "react";
-import { useAppState } from "../app/store";
+import { toggleCameraMode, useAppState } from "../app/store";
+import { CAMERA_MODE_LABEL } from "./CameraSettings";
 
 const ABILITY_LABEL: Record<string, string> = { dash: "Impulso", power_shot: "Carga", shield: "Escudo" };
 const ABILITY_KEY = "Shift";
 
-export function Hud(props: { leftColor: string; rightColor: string; leftName?: string; rightName?: string; onLeave?: () => void; showPing: boolean }) {
+export function Hud(props: {
+  leftColor: string;
+  rightColor: string;
+  leftName?: string;
+  rightName?: string;
+  onLeave?: () => void;
+  showPing: boolean;
+  /** True quando ha dois jogadores no mesmo teclado: a camera fica em arena. */
+  cameraLocked?: boolean;
+  onToggleCameraPanel?: () => void;
+}) {
   const hud = useAppState((s) => s.hud);
+  const cameraMode = useAppState((s) => s.camera.mode);
+  const cameraForced = !!props.cameraLocked && cameraMode === "thirdPerson";
   const [flashKey, setFlashKey] = useState(0);
   const [lastScore, setLastScore] = useState({ l: 0, r: 0 });
 
@@ -40,6 +53,12 @@ export function Hud(props: { leftColor: string; rightColor: string; leftName?: s
           </span>
         </div>
       </div>
+
+      {cameraForced && (
+        <div className="absolute right-5 top-14 max-w-xs rounded-xl bg-amber-400/15 px-3 py-2 text-right text-xs text-amber-100" data-testid="camera-forced">
+          Terceira pessoa só com um jogador por tela. Com dois teclados a câmera fica em Arena; volta sozinha ao jogar com 1.
+        </div>
+      )}
 
       {/* Overlays de fase */}
       <PhaseOverlay phase={hud.phase} phaseTicks={hud.phaseTicks} scoreLeft={hud.scoreLeft} scoreRight={hud.scoreRight} leftColor={props.leftColor} rightColor={props.rightColor} team={hud.team} />
@@ -78,8 +97,25 @@ export function Hud(props: { leftColor: string; rightColor: string; leftName?: s
         <div>
           <b className="text-white/60">WASD</b> mover · <b className="text-white/60">Espaço</b> chutar · <b className="text-white/60">Shift</b> habilidade
         </div>
+        <div className="mt-1">
+          <b className="text-white/60">C</b> trocar câmera · <b className="text-white/60">V</b> ajustes
+        </div>
       </div>
       <div className="absolute right-5 top-5 flex items-center gap-2 text-xs">
+        <button
+          className="btn btn-ghost pointer-events-auto rounded-full px-3 py-1 text-xs"
+          data-testid="camera-toggle"
+          onClick={() => toggleCameraMode()}
+          title={props.cameraLocked ? "Com 2 jogadores no mesmo teclado a câmera fica em Arena" : "Trocar câmera (C)"}
+        >
+          <span aria-hidden>🎥</span>
+          <span data-testid="camera-mode">{cameraForced ? "Arena (2P)" : CAMERA_MODE_LABEL[cameraMode]}</span>
+        </button>
+        {props.onToggleCameraPanel && (
+          <button className="btn btn-ghost pointer-events-auto rounded-full px-3 py-1 text-xs" onClick={props.onToggleCameraPanel} title="Ajustes da câmera (V)">
+            Ajustes
+          </button>
+        )}
         {props.showPing && (
           <span className={`rounded-full px-2 py-1 ${hud.connected ? "bg-black/40 text-white/60" : "bg-red-500/40 text-red-100"}`}>
             {hud.connected ? `${Math.round(hud.pingMs)} ms` : "reconectando…"}

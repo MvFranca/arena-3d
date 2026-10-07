@@ -1,6 +1,7 @@
 import { ARCHETYPES, ATTR, ATTRIBUTE_KEYS, attributeBudgetUsed, listAbilities, sanitizeLoadout, type AbilityId, type Attributes, type Loadout } from "@arena/sim";
 import { useEffect, useState } from "react";
 import { api, type MatchHistoryItem, type PlayerStats } from "../../session/api";
+import { CameraSettings } from "../../ui/CameraSettings";
 import { Card, ErrorBanner, Logo, Shell } from "../../ui/common";
 import { getState, navigate, setState, useAppState } from "../store";
 
@@ -137,6 +138,11 @@ export function ProfileScreen() {
                 <Stat label="Gols" value={stats.goals} />
               </div>
             )}
+          </Card>
+          <Card>
+            <h3 className="font-display mb-1 text-lg font-bold">Câmera</h3>
+            <p className="mb-3 text-sm text-white/50">Preferência deste navegador. Salva automaticamente e vale em todas as partidas; tecla C troca durante o jogo.</p>
+            <CameraSettings />
           </Card>
           {history.length > 0 && (
             <Card>

@@ -2,6 +2,7 @@ import { ARENAS, RULESETS } from "@arena/sim";
 import { useEffect, useState } from "react";
 import { connection, defaultGameServerUrl } from "../../net/GameConnection";
 import { api, ensureSession } from "../../session/api";
+import { CameraSettings } from "../../ui/CameraSettings";
 import { Card, ErrorBanner, Logo, Shell } from "../../ui/common";
 import { getState, navigate, setState, showError, useAppState } from "../store";
 
@@ -152,7 +153,16 @@ export function HomeScreen() {
           </Card>
         </div>
       </div>
-      <p className="mt-6 text-center text-xs text-white/30">WASD mover · Espaço chutar · Shift habilidade · controle também funciona</p>
+      <Card className="mt-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-lg font-bold">Câmera</h2>
+            <p className="text-sm text-white/50">Troque a qualquer momento, até no meio da partida (tecla C). {localTwo && "Com 2 jogadores no mesmo teclado a partida usa Arena."}</p>
+          </div>
+        </div>
+        <CameraSettings />
+      </Card>
+      <p className="mt-6 text-center text-xs text-white/30">WASD mover · Espaço chutar · Shift habilidade · C câmera · controle também funciona</p>
     </Shell>
   );
 }

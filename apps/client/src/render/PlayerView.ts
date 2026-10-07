@@ -88,6 +88,11 @@ export class PlayerView {
     this.kickAnim = 1;
   }
 
+  /** Yaw ja suavizado que o corpo esta mostrando. A camera segue este, nao o cru. */
+  get visualYaw(): number {
+    return this.lastYaw;
+  }
+
   update(p: RenderPlayer, dt: number, smoothLocal: boolean): void {
     if (!this.initialized) {
       this.visualX = p.x;
