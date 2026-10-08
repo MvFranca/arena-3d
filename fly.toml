@@ -19,6 +19,9 @@ primary_region = "gru"
   auto_stop_machines = "off"
   auto_start_machines = true
   min_machines_running = 1
+  # IMPORTANTE: salas ficam em memória. O Fly cria 2 machines no 1º deploy.
+  # Depois do deploy rode: fly scale count 1
+  # Com 2+ machines, create numa e join na outra = "Sala não encontrada".
 
   [[http_service.checks]]
     interval = "15s"
@@ -28,7 +31,8 @@ primary_region = "gru"
     path = "/health"
 
 [[vm]]
-  memory = "512mb"
-  memory_mb = 512
+  # Rapier + Node estouravam 512MB (OOM) e matavam as salas em memória
+  memory = "1gb"
+  memory_mb = 1024
   cpu_kind = "shared"
   cpus = 1

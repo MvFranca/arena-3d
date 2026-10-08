@@ -60,7 +60,7 @@ export function HomeScreen() {
       if (!ok) throw new Error("Não foi possível conectar ao servidor de jogo.");
       const unsub = connection.on("error", (_c, m) => showError(m));
       if (action === "create") connection.sendJson({ t: "create", rulesetId: payload.rulesetId!, mapId: payload.mapId });
-      else connection.sendJson({ t: "join", code: payload.code!.toUpperCase() });
+      else connection.sendJson({ t: "join", code: payload.code!.trim().toUpperCase() });
       const joined = await waitForRoom(4000);
       unsub();
       if (!joined) throw new Error(action === "join" ? "Sala não encontrada ou cheia." : "Servidor não respondeu.");

@@ -25,7 +25,7 @@ export class RoomManager {
   }
 
   get(code: string): MatchRoom | undefined {
-    return this.rooms.get(code.toUpperCase());
+    return this.rooms.get(code.trim().toUpperCase());
   }
 
   async create(
