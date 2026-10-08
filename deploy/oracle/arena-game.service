@@ -1,0 +1,21 @@
+[Unit]
+Description=Arena 3D game server
+After=network.target
+
+[Service]
+Type=simple
+User=opc
+Group=opc
+WorkingDirectory=/home/opc/arena/apps/game-server
+Environment=PATH=/usr/local/bin:/usr/bin
+Environment=NODE_ENV=production
+Environment=PORT=8080
+Environment=ALLOW_ANON=true
+Environment=NODE_OPTIONS=--max-old-space-size=384
+Environment=PUBLIC_WS_URL=wss://152.67.61.207.sslip.io
+ExecStart=/usr/local/bin/pnpm exec tsx src/index.ts
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

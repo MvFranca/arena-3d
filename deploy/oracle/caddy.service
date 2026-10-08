@@ -1,0 +1,22 @@
+[Unit]
+Description=Caddy reverse proxy (TLS)
+After=network.target arena-game.service
+Requires=arena-game.service
+
+[Service]
+Type=notify
+User=root
+Environment=DOMAIN=152.67.61.207.sslip.io
+Environment=XDG_DATA_HOME=/var/lib/caddy
+Environment=XDG_CONFIG_HOME=/var/lib/caddy
+Environment=GOMEMLIMIT=64MiB
+Environment=GOMAXPROCS=1
+ExecStart=/usr/local/bin/caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+ExecReload=/usr/local/bin/caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+TimeoutStopSec=5s
+LimitNOFILE=1048576
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
