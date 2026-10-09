@@ -30,8 +30,8 @@ O jogo é um monorepo. A ideia central é que **a mesma simulação** (`@arena/s
 2. O cliente conecta ao **game server** via WebSocket.
 3. Lobby usa mensagens JSON (criar/entrar, time, ready, start).
 4. Em jogo, o tráfego vira **binário**: inputs do jogador e snapshots do estado.
-5. O servidor avança a física em **ticks fixos a 60 Hz**, aplica inputs e emite snapshots (~20 Hz).
-6. O cliente prevê o jogador local, interpola os demais e reconcilia com o estado autoritativo.
+5. O servidor avança a física em **ticks fixos a 60 Hz**, aplica inputs e emite snapshots (~30 Hz).
+6. O cliente prevê o jogador local e a bola, interpola os demais a partir dos snapshots e reconcilia com o estado autoritativo.
 
 
 

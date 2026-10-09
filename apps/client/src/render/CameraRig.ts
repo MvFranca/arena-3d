@@ -1,4 +1,4 @@
-import type { ArenaConfig } from "@arena/sim";
+import { playerWalkBounds, type ArenaConfig } from "@arena/sim";
 import * as THREE from "three";
 import type { CameraMode, CameraPrefs } from "../app/cameraPrefs";
 
@@ -52,8 +52,9 @@ export class CameraRig {
     this.camera.updateProjectionMatrix();
     const vfov = THREE.MathUtils.degToRad(ARENA_FOV);
     const hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect);
-    const L = this.arena.halfLength + this.arena.goalDepth + 1.5;
-    const W = this.arena.halfWidth + 1.5;
+    const walk = playerWalkBounds(this.arena);
+    const L = walk.halfLength + 1.5;
+    const W = walk.halfWidth + 1.5;
     const byWidth = L / Math.tan(hfov / 2);
     const byDepth = (W * Math.sin(ARENA_PITCH) * 2.0 + 2) / (2 * Math.tan(vfov / 2));
     this.arenaDistance = Math.max(byWidth, byDepth) * 1.02 + 1;
@@ -162,21 +163,16 @@ export class CameraRig {
   }
 
   private insideArena(p: THREE.Vector3): boolean {
-    const L = this.arena.halfLength - WALL_MARGIN;
-    const W = this.arena.halfWidth - WALL_MARGIN;
-    if (Math.abs(p.z) > W) return false;
-    if (Math.abs(p.x) <= L) return true;
-    // Dentro da boca do gol a camera pode entrar ate o fundo da rede.
-    const inGoalMouth = Math.abs(p.z) < this.arena.goalHalfWidth - WALL_MARGIN && p.y < this.arena.goalHeight - WALL_MARGIN;
-    return inGoalMouth && Math.abs(p.x) <= this.arena.halfLength + this.arena.goalDepth - WALL_MARGIN;
+    const walk = playerWalkBounds(this.arena);
+    const L = walk.halfLength - WALL_MARGIN;
+    const W = walk.halfWidth - WALL_MARGIN;
+    return Math.abs(p.x) <= L && Math.abs(p.z) <= W;
   }
 
   private clampInsideArena(p: THREE.Vector3): void {
-    const W = this.arena.halfWidth - WALL_MARGIN;
-    p.z = THREE.MathUtils.clamp(p.z, -W, W);
-    const inGoalMouth = Math.abs(p.z) < this.arena.goalHalfWidth - WALL_MARGIN && p.y < this.arena.goalHeight - WALL_MARGIN;
-    const L = (inGoalMouth ? this.arena.halfLength + this.arena.goalDepth : this.arena.halfLength) - WALL_MARGIN;
-    p.x = THREE.MathUtils.clamp(p.x, -L, L);
+    const walk = playerWalkBounds(this.arena);
+    p.z = THREE.MathUtils.clamp(p.z, -(walk.halfWidth - WALL_MARGIN), walk.halfWidth - WALL_MARGIN);
+    p.x = THREE.MathUtils.clamp(p.x, -(walk.halfLength - WALL_MARGIN), walk.halfLength - WALL_MARGIN);
   }
 
   private applyShake(scale: number): void {

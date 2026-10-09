@@ -29,7 +29,7 @@ describe("snapshot", () => {
     s.ball = { x: 3.456, y: 0.5, z: -7.891, vx: 12.34, vy: -1, vz: 0.01 };
     s.players.push({
       id: "p", slot: 3, team: "right", name: "p", x: -10.125, y: 1.2, z: 4.5, vx: -3.3, vz: 9.99, yaw: 1.5708,
-      cooldownTicks: 321, flags: 0b1011, lastSeq: 99, abilityId: "dash",
+      cooldownTicks: 321, flags: 0b1011, lastSeq: 99, abilityId: "dash", dirX: 0.5, dirZ: -1,
     });
     const bytes = encodeSnapshot(new BufferWriter(), s);
     expect(bytes.length).toBeLessThan(80);
@@ -43,5 +43,7 @@ describe("snapshot", () => {
     expect(d.ball.vx).toBeCloseTo(12.34, 2);
     expect(d.players[0]).toMatchObject({ slot: 3, lastSeq: 99, cooldownTicks: 321, flags: 0b1011 });
     expect(d.players[0]!.yaw).toBeCloseTo(1.571, 2);
+    expect(d.players[0]!.dirX).toBeCloseTo(0.5, 1);
+    expect(d.players[0]!.dirZ).toBeCloseTo(-1, 1);
   });
 });

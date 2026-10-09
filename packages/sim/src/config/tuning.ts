@@ -4,7 +4,7 @@
  */
 export const TICK_RATE = 60;
 export const FIXED_DT = 1 / TICK_RATE;
-export const SNAPSHOT_EVERY_TICKS = 3; // 20 Hz
+export const SNAPSHOT_EVERY_TICKS = 2; // 30 Hz
 
 export const GRAVITY = -22; // mais forte que a real para a bola cair rapido (arcade)
 
@@ -23,7 +23,20 @@ export const PLAYER = {
   restitution: 0.25,
   /** Velocidade minima para atualizar o yaw visual. */
   yawMinSpeed: 0.5,
+  /** Corredor externo ao redor do retangulo de jogo (laterais e atras dos gols). */
+  corridorWidth: 2.8,
 };
+
+/** Limite walkable do jogador: laterais + atras das redes. A bola nao usa isto. */
+export function playerWalkBounds(arena: { halfLength: number; halfWidth: number; goalDepth: number }): {
+  halfLength: number;
+  halfWidth: number;
+} {
+  return {
+    halfLength: arena.halfLength + arena.goalDepth + PLAYER.corridorWidth,
+    halfWidth: arena.halfWidth + PLAYER.corridorWidth,
+  };
+}
 
 /** Altura do centro do corpo do jogador. */
 export const PLAYER_CENTER_Y = PLAYER.halfHeight + PLAYER.radius + PLAYER.hover;

@@ -19,6 +19,7 @@ export interface HudState {
   pingMs: number;
   team: Team | null;
   connected: boolean;
+  netHint: string | null;
 }
 
 export interface MatchResult {
@@ -87,6 +88,7 @@ export const initialHud: HudState = {
   pingMs: 0,
   team: null,
   connected: true,
+  netHint: null,
 };
 
 let state: AppState = {

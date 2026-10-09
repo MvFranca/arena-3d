@@ -57,6 +57,14 @@ export function createRenderState(): RenderState {
  * Quem alimenta o renderer. A implementacao local avanca a simulacao no
  * processo; a remota manda inputs e aplica snapshots. O renderer nao sabe a diferenca.
  */
+export interface NetDebug {
+  snapshotAgeMs: number;
+  delayTicks: number;
+  bufferSize: number;
+  ballCorr: number;
+  remoteCorr: number;
+}
+
 export interface SimulationHost {
   /** Avanca o tempo real em ms; roda os ticks fixos necessarios. */
   update(deltaMs: number): void;
@@ -66,5 +74,6 @@ export interface SimulationHost {
   drainEvents(): MatchEvent[];
   readonly localPlayerIds: string[];
   readonly pingMs: number;
+  readonly netDebug?: NetDebug;
   dispose(): void;
 }

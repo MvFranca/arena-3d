@@ -367,7 +367,7 @@ export class MatchSimulation {
       if (!ps) {
         ps = {
           id: p.id, slot: p.slot, team: p.team, name: p.name, x: 0, y: 0, z: 0, vx: 0, vz: 0, yaw: 0,
-          cooldownTicks: 0, flags: 0, lastSeq: 0, abilityId: p.abilityId,
+          cooldownTicks: 0, flags: 0, lastSeq: 0, abilityId: p.abilityId, dirX: 0, dirZ: 0,
         };
         out.players[i] = ps;
       }
@@ -394,6 +394,8 @@ export class MatchSimulation {
     ps.yaw = p.yaw;
     ps.cooldownTicks = p.cooldownTicks;
     ps.lastSeq = p.lastSeq;
+    ps.dirX = p.input.dirX;
+    ps.dirZ = p.input.dirZ;
     let flags = 0;
     if (p.connected) flags |= PLAYER_FLAG_CONNECTED;
     if (p.shieldTicks > 0) flags |= PLAYER_FLAG_SHIELD;
@@ -450,6 +452,13 @@ export class MatchSimulation {
     const t = p.body.translation();
     const v = p.body.linvel();
     return { x: t.x, z: t.z, vx: v.x, vz: v.z };
+  }
+
+  setPlayerTransform(id: string, x: number, z: number, vx = 0, vz = 0): void {
+    const p = this.players.get(id);
+    if (!p) return;
+    p.body.setTranslation({ x, y: PLAYER_CENTER_Y, z }, true);
+    p.body.setLinvel({ x: vx, y: 0, z: vz }, true);
   }
 
   getBallPosition(): { x: number; y: number; z: number } {

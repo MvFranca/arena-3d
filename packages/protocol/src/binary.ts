@@ -54,6 +54,8 @@ export interface SnapshotPlayer {
   yaw: number;
   cooldownTicks: number;
   flags: number;
+  dirX: number;
+  dirZ: number;
 }
 
 export interface Snapshot {
@@ -89,6 +91,8 @@ export function encodeSnapshot(writer: BufferWriter, s: MatchState): Uint8Array 
     writer.i16(clampInt(p.yaw * YAW_SCALE, -32767, 32767));
     writer.u16(Math.min(65535, p.cooldownTicks));
     writer.u8(p.flags & 0xff);
+    writer.i8(clampInt((p.dirX ?? 0) * 127, -127, 127));
+    writer.i8(clampInt((p.dirZ ?? 0) * 127, -127, 127));
   }
   return writer.toUint8Array();
 }
@@ -122,6 +126,8 @@ export function decodeSnapshot(reader: BufferReader): Snapshot {
       yaw: reader.i16() / YAW_SCALE,
       cooldownTicks: reader.u16(),
       flags: reader.u8(),
+      dirX: reader.i8() / 127,
+      dirZ: reader.i8() / 127,
     });
   }
   return { tick, phase, phaseTicksRemaining, clockTicksRemaining, scoreLeft, scoreRight, ball, players };

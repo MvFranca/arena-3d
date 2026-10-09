@@ -95,6 +95,33 @@ describe("inputs e autoridade", () => {
     b.close();
   });
 
+  it("snapshot publica a direcao sanitizada do outro jogador", async () => {
+    const a = new TestClient(server.port);
+    const b = new TestClient(server.port);
+    await a.connect("Ana");
+    await b.connect("Bia");
+    a.send({ t: "create", rulesetId: "duel" });
+    await a.waitFor(() => !!a.room);
+    b.send({ t: "join", code: a.room!.code });
+    await b.waitFor(() => !!b.room && b.room.players.length === 2);
+    b.send({ t: "ready", ready: true });
+    await a.waitFor(() => !!a.room?.players.find((p) => p.name === "Bia")?.ready);
+    a.send({ t: "start" });
+    await a.waitFor(() => a.room?.phase === "countdown");
+    server.tick(TICK_RATE * 3 + 2);
+    await sleep(20);
+
+    for (let i = 0; i < 20; i++) b.sendInput(server.game.tick + 2 + i, { dirX: 2, dirZ: 0 });
+    await sleep(20);
+    server.tick(24);
+    await sleep(30);
+    const remote = a.snapshots[a.snapshots.length - 1]!.players.find((p) => p.slot === b.mySlot)!;
+    expect(remote.dirX).toBeGreaterThan(0.8);
+    expect(Math.abs(remote.dirZ)).toBeLessThan(0.15);
+    a.close();
+    b.close();
+  });
+
   it("input ainda move depois que o processo ja rodou muitos ticks", async () => {
     server.tick(50_000);
     const a = new TestClient(server.port);

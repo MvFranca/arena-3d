@@ -45,14 +45,16 @@ describe("movimento", () => {
     sim.dispose();
   });
 
-  it("para na parede", async () => {
+  it("atravessa a lateral e para no limite externo", async () => {
     const sim = await createSim();
     skipCountdown(sim);
     sim.setInput("a", input({ dirZ: 1 }));
     stepN(sim, 300);
     const pos = sim.getPlayerPosition("a")!;
-    expect(pos.z).toBeLessThan(sim.arena.halfWidth);
-    expect(pos.z).toBeGreaterThan(sim.arena.halfWidth - PLAYER.radius - 0.6);
+    const outer = sim.arena.halfWidth + PLAYER.corridorWidth;
+    expect(pos.z).toBeGreaterThan(sim.arena.halfWidth + PLAYER.radius * 0.4);
+    expect(pos.z).toBeLessThan(outer + 0.05);
+    expect(pos.z).toBeGreaterThan(outer - PLAYER.radius - 0.6);
     sim.dispose();
   });
 
@@ -132,6 +134,79 @@ describe("chute e gol", () => {
     stepN(sim, TICK_RATE * 2);
     const ball = sim.getBallPosition();
     expect(Math.abs(ball.z)).toBeLessThan(sim.arena.halfWidth + 0.1);
+    sim.dispose();
+  });
+});
+
+describe("perimetro haxball", () => {
+  it("jogador passa as quatro paredes internas", async () => {
+    const sim = await createSim();
+    skipCountdown(sim);
+    const W = sim.arena.halfWidth;
+    const L = sim.arena.halfLength;
+
+    sim.setPlayerTransform("a", 0, W - 1);
+    sim.setInput("a", input({ dirZ: 1 }));
+    stepN(sim, 80);
+    expect(sim.getPlayerPosition("a")!.z).toBeGreaterThan(W + PLAYER.radius * 0.3);
+
+    sim.setPlayerTransform("a", 0, -(W - 1));
+    sim.setInput("a", input({ dirZ: -1 }));
+    stepN(sim, 80);
+    expect(sim.getPlayerPosition("a")!.z).toBeLessThan(-(W + PLAYER.radius * 0.3));
+
+    sim.setPlayerTransform("a", L - 1, 0);
+    sim.setInput("a", input({ dirX: 1 }));
+    stepN(sim, 80);
+    expect(sim.getPlayerPosition("a")!.x).toBeGreaterThan(L);
+
+    sim.setPlayerTransform("a", -(L - 1), 0);
+    sim.setInput("a", input({ dirX: -1 }));
+    stepN(sim, 80);
+    expect(sim.getPlayerPosition("a")!.x).toBeLessThan(-L);
+    sim.dispose();
+  });
+
+  it("entra no gol e circula atras da rede sem escapar", async () => {
+    const sim = await createSim();
+    skipCountdown(sim);
+    const L = sim.arena.halfLength;
+    const outer = L + sim.arena.goalDepth + PLAYER.corridorWidth;
+    sim.setPlayerTransform("a", L - 0.4, 0);
+    sim.setInput("a", input({ dirX: 1 }));
+    stepN(sim, 220);
+    const pos = sim.getPlayerPosition("a")!;
+    expect(pos.x).toBeGreaterThan(L + sim.arena.goalDepth * 0.4);
+    expect(pos.x).toBeLessThan(outer + 0.05);
+    sim.dispose();
+  });
+
+  it("chuta a bola colada na parede vindo de fora", async () => {
+    const sim = await createSim();
+    skipCountdown(sim);
+    const W = sim.arena.halfWidth;
+    sim.setPlayerTransform("a", 0, W + 1.0);
+    sim.setBallTransform(0, BALL.radius, W - BALL.radius - 0.02, 0, 0, 0);
+    sim.setInput("a", input({ kick: true, dirZ: -1 }));
+    const events = stepN(sim, 5);
+    expect(events.some((e) => e.type === "kick")).toBe(true);
+    sim.dispose();
+  });
+
+  it("dash nao atravessa o limite externo", async () => {
+    const sim = await createSim({
+      players: [
+        { id: "a", team: "left", ability: "dash" },
+        { id: "b", team: "right" },
+      ],
+    });
+    skipCountdown(sim);
+    const outer = sim.arena.halfWidth + PLAYER.corridorWidth;
+    sim.setPlayerTransform("a", 0, outer - 0.3);
+    sim.setInput("a", input({ dirZ: 1, ability: true }));
+    stepN(sim, 20);
+    const pos = sim.getPlayerPosition("a")!;
+    expect(pos.z).toBeLessThan(outer + 0.15);
     sim.dispose();
   });
 });

@@ -121,6 +121,11 @@ export function Hud(props: {
             {hud.connected ? `${Math.round(hud.pingMs)} ms` : "reconectando…"}
           </span>
         )}
+        {props.showPing && hud.netHint && (
+          <span className="hidden rounded-full bg-black/30 px-2 py-1 font-mono text-[10px] text-white/40 sm:inline" title="idade do snapshot, buffer, atraso e correções">
+            {hud.netHint}
+          </span>
+        )}
         {props.onLeave && (
           <button className="btn btn-ghost pointer-events-auto rounded-full px-3 py-1 text-xs" onClick={props.onLeave}>
             Sair

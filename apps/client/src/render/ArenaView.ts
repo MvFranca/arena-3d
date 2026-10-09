@@ -1,4 +1,4 @@
-import type { ArenaConfig } from "@arena/sim";
+import { playerWalkBounds, type ArenaConfig } from "@arena/sim";
 import * as THREE from "three";
 
 /** Geometria procedural da arena. A malha e so visual; os colliders vivem na simulacao. */
@@ -11,9 +11,10 @@ export class ArenaView {
     const t = arena.theme;
     const L = arena.halfLength;
     const W = arena.halfWidth;
+    const walk = playerWalkBounds(arena);
 
     const floorMat = new THREE.MeshStandardMaterial({ color: t.floor, roughness: 0.92, metalness: 0.02 });
-    const floor = new THREE.Mesh(new THREE.BoxGeometry((L + arena.goalDepth + 2) * 2, 0.4, (W + 2) * 2), floorMat);
+    const floor = new THREE.Mesh(new THREE.BoxGeometry((walk.halfLength + 2) * 2, 0.4, (walk.halfWidth + 2) * 2), floorMat);
     floor.position.y = -0.2;
     floor.receiveShadow = true;
     this.group.add(floor);
@@ -92,6 +93,37 @@ export class ArenaView {
       wall(seg, side * L, arena.goalHalfWidth + seg / 2, Math.PI / 2);
       wall(seg, side * L, -(arena.goalHalfWidth + seg / 2), Math.PI / 2);
     }
+
+    // Limite externo walkable: jogador para aqui; bola nao chega.
+    const outerMat = new THREE.MeshPhysicalMaterial({
+      color: t.accent,
+      transparent: true,
+      opacity: 0.08,
+      roughness: 0.35,
+      metalness: 0.05,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const outerEdge = new THREE.MeshStandardMaterial({ color: t.accent, emissive: t.accent, emissiveIntensity: 0.35, roughness: 0.5 });
+    this.pulseMats.push(outerEdge);
+    const outerWall = (w: number, x: number, z: number, rotY: number) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, H * 0.55), outerMat);
+      m.position.set(x, (H * 0.55) / 2, z);
+      m.rotation.y = rotY;
+      this.group.add(m);
+      const edge = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, 0.05), outerEdge);
+      edge.position.set(x, H * 0.55, z);
+      edge.rotation.y = rotY;
+      this.group.add(edge);
+    };
+    outerWall(walk.halfLength * 2, 0, walk.halfWidth, 0);
+    outerWall(walk.halfLength * 2, 0, -walk.halfWidth, 0);
+    outerWall(walk.halfWidth * 2, walk.halfLength, 0, Math.PI / 2);
+    outerWall(walk.halfWidth * 2, -walk.halfLength, 0, Math.PI / 2);
+    addLine(walk.halfLength * 2, lw, 0, walk.halfWidth - lw / 2);
+    addLine(walk.halfLength * 2, lw, 0, -walk.halfWidth + lw / 2);
+    addLine(lw, walk.halfWidth * 2, walk.halfLength - lw / 2, 0);
+    addLine(lw, walk.halfWidth * 2, -walk.halfLength + lw / 2, 0);
 
     const cornerMat = new THREE.MeshStandardMaterial({ color: t.accent, emissive: t.accent, emissiveIntensity: 0.7, roughness: 0.4 });
     this.pulseMats.push(cornerMat);

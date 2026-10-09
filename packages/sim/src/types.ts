@@ -128,6 +128,9 @@ export interface PlayerState {
   flags: number;
   lastSeq: number;
   abilityId: AbilityId | null;
+  /** Ultima intencao de movimento aplicada neste tick (normalizada). */
+  dirX: number;
+  dirZ: number;
 }
 
 export interface BallState {

@@ -26,7 +26,6 @@ export class ClockSync {
     const offset = serverNowTicks - nowMs / DT_MS;
     if (this.offsetTicks === null || this.samples < 3) this.offsetTicks = offset;
     else {
-      // Convergencia lenta para nao sacudir a previsao a cada pong.
       const diff = offset - this.offsetTicks;
       this.offsetTicks += Math.abs(diff) > 10 ? diff : diff * 0.1;
     }
@@ -48,6 +47,20 @@ export class ClockSync {
   /** Forca o relogio a partir do welcome, antes do primeiro pong. */
   seed(serverTick: number, nowMs: number): void {
     if (this.offsetTicks === null) this.offsetTicks = serverTick - nowMs / DT_MS;
+  }
+
+  /**
+   * Snapshot e um pouco do passado. So realinha se o relogio estiver
+   * claramente atrasado ou muitos ticks a frente.
+   */
+  noteSnapshot(serverTick: number, nowMs: number): void {
+    if (this.offsetTicks === null) {
+      this.offsetTicks = serverTick - nowMs / DT_MS;
+      return;
+    }
+    const estimated = this.serverTickNow(nowMs);
+    const drift = estimated - serverTick;
+    if (drift < -8 || drift > 45) this.offsetTicks = serverTick - nowMs / DT_MS;
   }
 
   /** Alinha o relogio ao tick autoritativo da partida (snapshot). */

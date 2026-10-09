@@ -99,7 +99,7 @@ export class GameServer {
       const prev = this.sessions.get(msg.sessionId);
       if (prev && !prev.connected) {
         prev.attach(ws);
-        prev.send({ t: "welcome", playerId: prev.playerId, sessionId: prev.id, serverTick: this.tick });
+        prev.send({ t: "welcome", playerId: prev.playerId, sessionId: prev.id, serverTick: prev.room?.simTick ?? this.tick });
         if (prev.room) prev.room.join(prev);
         return prev;
       }
@@ -118,7 +118,7 @@ export class GameServer {
         // Mantem a vaga: a nova sessao assume.
         dup.attach(ws);
         dup.name = identity.name;
-        dup.send({ t: "welcome", playerId: dup.playerId, sessionId: dup.id, serverTick: this.tick });
+        dup.send({ t: "welcome", playerId: dup.playerId, sessionId: dup.id, serverTick: dup.room?.simTick ?? this.tick });
         dup.room.join(dup);
         return dup;
       }
