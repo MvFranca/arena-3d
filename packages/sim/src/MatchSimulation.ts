@@ -438,6 +438,16 @@ export class MatchSimulation {
         p.kickChargeTicks = 0;
         p.kickChargeMultiplier = 1;
       }
+      const kicking = (ps.flags & PLAYER_FLAG_KICKING) !== 0;
+      p.kickedThisTick = false;
+      p.kickBufferTicks = 0;
+      if (kicking) {
+        p.prevKick = true;
+        p.kickRefractoryTicks = Math.max(p.kickRefractoryTicks, 1);
+      } else {
+        p.prevKick = false;
+        p.kickRefractoryTicks = 0;
+      }
     }
   }
 

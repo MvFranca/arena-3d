@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BALL, KICK, PLAYER, resolveStats, DEFAULT_ATTRIBUTES, TICK_RATE } from "../src";
+import { BALL, KICK, PLAYER, PLAYER_FLAG_KICKING, createEmptyMatchState, resolveStats, DEFAULT_ATTRIBUTES, TICK_RATE } from "../src";
 import { createSim, input, skipCountdown, stepN } from "./helpers";
 
 describe("fases e relogio", () => {
@@ -101,6 +101,53 @@ describe("chute e gol", () => {
     stepN(sim, 10);
     const ball = sim.getBallPosition();
     expect(ball.x).toBeGreaterThan(a.x + 2);
+    sim.dispose();
+  });
+
+  it("replay apos applyState pre-chute reaplica o kick", async () => {
+    const sim = await createSim();
+    skipCountdown(sim);
+    const a = sim.getPlayerPosition("a")!;
+    sim.setBallTransform(a.x + PLAYER.radius + BALL.radius + 0.1, BALL.radius, a.z, 0, 0, 0);
+    sim.setInput("a", input({ kick: true }));
+    const kicked = stepN(sim, 1);
+    expect(kicked.some((e) => e.type === "kick")).toBe(true);
+    const afterKick = sim.getBallPosition();
+
+    const pre = createEmptyMatchState();
+    sim.readState(pre);
+    const pa = pre.players.find((p) => p.id === "a")!;
+    pa.flags &= ~PLAYER_FLAG_KICKING;
+    pre.ball.x = a.x + PLAYER.radius + BALL.radius + 0.1;
+    pre.ball.y = BALL.radius;
+    pre.ball.z = a.z;
+    pre.ball.vx = 0;
+    pre.ball.vy = 0;
+    pre.ball.vz = 0;
+    sim.applyState(pre);
+    sim.setInput("a", input({ kick: true }));
+    const replayed = stepN(sim, 1);
+    expect(replayed.some((e) => e.type === "kick")).toBe(true);
+    expect(sim.getBallPosition().x).toBeGreaterThan(pre.ball.x + 0.2);
+    expect(afterKick.x).toBeGreaterThan(a.x);
+    sim.dispose();
+  });
+
+  it("replay apos applyState com chute ja aplicado nao chuta de novo", async () => {
+    const sim = await createSim();
+    skipCountdown(sim);
+    const a = sim.getPlayerPosition("a")!;
+    sim.setBallTransform(a.x + PLAYER.radius + BALL.radius + 0.1, BALL.radius, a.z, 0, 0, 0);
+    sim.setInput("a", input({ kick: true }));
+    expect(stepN(sim, 1).some((e) => e.type === "kick")).toBe(true);
+    const state = createEmptyMatchState();
+    sim.readState(state);
+    const pa = state.players.find((p) => p.id === "a")!;
+    pa.flags |= PLAYER_FLAG_KICKING;
+    sim.applyState(state);
+    sim.setInput("a", input({ kick: true }));
+    const replayed = stepN(sim, 1);
+    expect(replayed.some((e) => e.type === "kick")).toBe(false);
     sim.dispose();
   });
 

@@ -46,4 +46,13 @@ describe("ballCorrection", () => {
     expect(fast.x).toBeLessThan(slow.x);
     expect(fast.x).toBeGreaterThan(0);
   });
+
+  it("no hold do chute local preserva o offset grande e nao decai", () => {
+    const held = nextBallOffset({ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }, false, true);
+    expect(held.x).toBeCloseTo(-2, 5);
+    expect(nextBallOffset({ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }, false)).toEqual({ x: 0, y: 0, z: 0 });
+    expect(nextBallOffset({ x: 1, y: 0, z: 0 }, { x: 1.2, y: 0, z: 0 }, true, true)).toEqual({ x: 0, y: 0, z: 0 });
+    const frozen = decayBallOffset({ x: 0.4, y: 0, z: 0 }, 0.05, 81, true);
+    expect(frozen.x).toBeCloseTo(0.4, 5);
+  });
 });

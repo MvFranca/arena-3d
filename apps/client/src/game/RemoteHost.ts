@@ -11,7 +11,7 @@ import {
 import type { GameConnection } from "../net/GameConnection";
 import { SnapshotBuffer, type SampledBall, type SampledPlayer } from "../net/SnapshotBuffer";
 import { BINDING_P1, InputCollector } from "./InputCollector";
-import { decayBallOffset, isHardBallReset, localOwnsBall, nextBallOffset, nextOwnBlend, presentBall, remoteContactsBall, showPredictedBall, type BallVec } from "./ballCorrection";
+import { decayBallOffset, isHardBallReset, LOCAL_KICK_HOLD_MS, localOwnsBall, nextBallOffset, nextOwnBlend, presentBall, remoteContactsBall, showPredictedBall, type BallVec } from "./ballCorrection";
 import { remoteInputDecay } from "./remoteInputDecay";
 import { copyMatchState, interpolateStates } from "./stateUtils";
 import type { NetDebug, RenderState, SimulationHost } from "./types";
@@ -116,7 +116,13 @@ export class RemoteHost implements SimulationHost {
     this.frameDt = frameMs / 1000;
     this.accumulator += frameMs;
     const ball = this.curr.ball;
-    this.ballOffset = decayBallOffset(this.ballOffset, this.frameDt, ball.vx * ball.vx + ball.vy * ball.vy + ball.vz * ball.vz);
+    const holdKick = this.localKickAt >= 0 && performance.now() - this.localKickAt < LOCAL_KICK_HOLD_MS;
+    this.ballOffset = decayBallOffset(
+      this.ballOffset,
+      this.frameDt,
+      ball.vx * ball.vx + ball.vy * ball.vy + ball.vz * ball.vz,
+      holdKick,
+    );
     const now = performance.now();
     const clock = this.conn.clock;
     if (!clock.synced) {
@@ -232,9 +238,11 @@ export class RemoteHost implements SimulationHost {
     }
     this.ticksSinceSnapshot = this.pending.length;
     this.sim.readState(this.curr);
+    copyMatchState(this.curr, this.prev);
 
+    const holdPredicted = this.localKickAt >= 0 && performance.now() - this.localKickAt < LOCAL_KICK_HOLD_MS;
     const hard = isHardBallReset({ error: snapErr, prevPhase: this.prevPhase, nextPhase: s.phase });
-    this.ballOffset = nextBallOffset(predictedBall, this.curr.ball, hard);
+    this.ballOffset = nextBallOffset(predictedBall, this.curr.ball, hard, holdPredicted);
     this.prevPhase = s.phase;
     this.remoteBuffer.push(s);
   }

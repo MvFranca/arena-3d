@@ -21,18 +21,21 @@ export function nextBallOffset(
   predicted: BallVec,
   reconciled: BallVec,
   hard: boolean,
+  holdPredicted = false,
 ): BallVec {
   if (hard) return { x: 0, y: 0, z: 0 };
   const dx = predicted.x - reconciled.x;
   const dy = predicted.y - reconciled.y;
   const dz = predicted.z - reconciled.z;
   const err = Math.hypot(dx, dy, dz);
-  if (err < 0.04 || err > BALL_SOFT_CORR_M) return { x: 0, y: 0, z: 0 };
-  const s = Math.min(1, BALL_SOFT_CORR_M / err);
+  if (err < 0.04) return { x: 0, y: 0, z: 0 };
+  if (!holdPredicted && err > BALL_SOFT_CORR_M) return { x: 0, y: 0, z: 0 };
+  const s = holdPredicted ? 1 : Math.min(1, BALL_SOFT_CORR_M / err);
   return { x: dx * s, y: dy * s, z: dz * s };
 }
 
-export function decayBallOffset(offset: BallVec, dtSec: number, ballSpeedSq = 0): BallVec {
+export function decayBallOffset(offset: BallVec, dtSec: number, ballSpeedSq = 0, holdPredicted = false): BallVec {
+  if (holdPredicted) return offset;
   const rate = ballSpeedSq > BALL_FAST_SPEED_SQ ? BALL_OFFSET_FAST_RATE : BALL_OFFSET_RATE;
   const k = Math.exp(-dtSec * rate);
   const next = { x: offset.x * k, y: offset.y * k, z: offset.z * k };
