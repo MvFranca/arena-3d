@@ -12,6 +12,7 @@ import type { GameConnection } from "../net/GameConnection";
 import { SnapshotBuffer, type SampledBall, type SampledPlayer } from "../net/SnapshotBuffer";
 import { BINDING_P1, InputCollector } from "./InputCollector";
 import { decayBallOffset, isHardBallReset, localOwnsBall, nextBallOffset, nextOwnBlend, presentBall, remoteContactsBall, showPredictedBall, type BallVec } from "./ballCorrection";
+import { remoteInputDecay } from "./remoteInputDecay";
 import { copyMatchState, interpolateStates } from "./stateUtils";
 import type { NetDebug, RenderState, SimulationHost } from "./types";
 
@@ -48,8 +49,11 @@ export class RemoteHost implements SimulationHost {
   private lastAppliedSnapshotTick = -1;
   private lastSnapshotAt = 0;
   private lastBallCorr = 0;
+  private lastVelCorr = 0;
   private lastRemoteCorr = 0;
   private prevPhase: MatchState["phase"] = "lobby";
+  private readonly remoteInputs = new Map<string, { dirX: number; dirZ: number }>();
+  private ticksSinceSnapshot = 0;
 
   constructor(
     private readonly conn: GameConnection,
@@ -80,6 +84,7 @@ export class RemoteHost implements SimulationHost {
       delayTicks: this.remoteBuffer.delayTicks,
       bufferSize: this.remoteBuffer.size,
       ballCorr: this.lastBallCorr,
+      velCorr: this.lastVelCorr,
       remoteCorr: this.lastRemoteCorr,
     };
   }
@@ -110,7 +115,8 @@ export class RemoteHost implements SimulationHost {
     const frameMs = Math.min(deltaMs, MAX_FRAME_MS);
     this.frameDt = frameMs / 1000;
     this.accumulator += frameMs;
-    this.ballOffset = decayBallOffset(this.ballOffset, this.frameDt);
+    const ball = this.curr.ball;
+    this.ballOffset = decayBallOffset(this.ballOffset, this.frameDt, ball.vx * ball.vx + ball.vy * ball.vy + ball.vz * ball.vz);
     const now = performance.now();
     const clock = this.conn.clock;
     if (!clock.synced) {
@@ -142,6 +148,8 @@ export class RemoteHost implements SimulationHost {
     if (this.recent.length > 3) this.recent.shift();
     this.conn.sendBinary(encodeInputPacket(this.writer, this.recent));
 
+    this.ticksSinceSnapshot++;
+    this.applyDecayedRemoteInputs(remoteInputDecay(this.ticksSinceSnapshot));
     this.sim.setInput(this.localPlayerId, timed);
     copyMatchState(this.curr, this.prev);
     const ev = this.sim.step();
@@ -167,6 +175,7 @@ export class RemoteHost implements SimulationHost {
     const predictedBall = { x: this.curr.ball.x, y: this.curr.ball.y, z: this.curr.ball.z };
     const snapErr = Math.hypot(predictedBall.x - s.ball.x, predictedBall.y - s.ball.y, predictedBall.z - s.ball.z);
     this.lastBallCorr = snapErr;
+    this.lastVelCorr = Math.hypot(this.curr.ball.vx - s.ball.vx, this.curr.ball.vy - s.ball.vy, this.curr.ball.vz - s.ball.vz);
     this.lastRemoteCorr = this.remoteCorrection(s);
 
     const a = this.authoritative;
@@ -216,10 +225,12 @@ export class RemoteHost implements SimulationHost {
     this.sim.applyState(a);
     this.applyRemoteInputs(a);
     while (this.pending.length && this.pending[0]!.seq <= myLastSeq) this.pending.shift();
-    for (const inp of this.pending) {
-      this.sim.setInput(this.localPlayerId, inp);
+    for (let i = 0; i < this.pending.length; i++) {
+      this.applyDecayedRemoteInputs(remoteInputDecay(i + 1));
+      this.sim.setInput(this.localPlayerId, this.pending[i]!);
       this.sim.step();
     }
+    this.ticksSinceSnapshot = this.pending.length;
     this.sim.readState(this.curr);
 
     const hard = isHardBallReset({ error: snapErr, prevPhase: this.prevPhase, nextPhase: s.phase });
@@ -230,13 +241,23 @@ export class RemoteHost implements SimulationHost {
 
   /** Direcao autoritativa do ultimo snapshot, nao inferida pela velocidade. */
   private applyRemoteInputs(state: MatchState): void {
+    this.remoteInputs.clear();
+    this.ticksSinceSnapshot = 0;
     for (const p of state.players) {
       if (p.id === this.localPlayerId) continue;
-      const len = Math.hypot(p.dirX, p.dirZ);
-      if (len > 0.05) {
-        this.sim.setInput(p.id, { seq: 0, dirX: p.dirX, dirZ: p.dirZ, kick: false, ability: false });
+      this.remoteInputs.set(p.id, { dirX: p.dirX, dirZ: p.dirZ });
+    }
+    this.applyDecayedRemoteInputs(1);
+  }
+
+  private applyDecayedRemoteInputs(decay: number): void {
+    for (const [id, inp] of this.remoteInputs) {
+      const dirX = inp.dirX * decay;
+      const dirZ = inp.dirZ * decay;
+      if (Math.hypot(dirX, dirZ) > 0.05) {
+        this.sim.setInput(id, { seq: 0, dirX, dirZ, kick: false, ability: false });
       } else {
-        this.sim.setInput(p.id, { ...EMPTY_INPUT });
+        this.sim.setInput(id, { ...EMPTY_INPUT });
       }
     }
   }

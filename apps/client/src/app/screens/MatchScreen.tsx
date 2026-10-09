@@ -112,7 +112,7 @@ export function MatchScreen() {
         team: me?.team ?? null,
         connected: s.mode === "online" ? connection.status === "connected" : true,
         netHint: host.netDebug
-          ? `${Math.round(host.netDebug.snapshotAgeMs)}ms buf:${host.netDebug.bufferSize} dly:${host.netDebug.delayTicks} b:${host.netDebug.ballCorr.toFixed(2)} r:${host.netDebug.remoteCorr.toFixed(2)}`
+          ? `${Math.round(host.netDebug.snapshotAgeMs)}ms buf:${host.netDebug.bufferSize} dly:${host.netDebug.delayTicks} b:${host.netDebug.ballCorr.toFixed(2)} v:${host.netDebug.velCorr.toFixed(2)} r:${host.netDebug.remoteCorr.toFixed(2)}`
           : null,
       });
     };

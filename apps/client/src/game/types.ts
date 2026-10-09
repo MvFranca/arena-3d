@@ -62,6 +62,7 @@ export interface NetDebug {
   delayTicks: number;
   bufferSize: number;
   ballCorr: number;
+  velCorr: number;
   remoteCorr: number;
 }
 

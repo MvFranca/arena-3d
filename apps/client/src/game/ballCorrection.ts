@@ -3,9 +3,12 @@ export const BALL_HARD_CORR_M = 3.5;
 /** Alcance em que a bola prevista do jogador local substitui a bola atrasada. */
 export const LOCAL_BALL_REACH = 1.7;
 /** Depois do chute local, a bola fica no presente por este tempo. */
-export const LOCAL_KICK_HOLD_MS = 220;
+export const LOCAL_KICK_HOLD_MS = 280;
 /** So segura a bola atrasada enquanto um adversario renderizado esta neste raio. */
-export const REMOTE_BALL_REACH = 2.1;
+export const REMOTE_BALL_REACH = 1.4;
+const BALL_OFFSET_RATE = 16;
+const BALL_OFFSET_FAST_RATE = 28;
+const BALL_FAST_SPEED_SQ = 64;
 
 export interface BallVec {
   x: number;
@@ -29,7 +32,8 @@ export function nextBallOffset(
   return { x: dx * s, y: dy * s, z: dz * s };
 }
 
-export function decayBallOffset(offset: BallVec, dtSec: number, rate = 14): BallVec {
+export function decayBallOffset(offset: BallVec, dtSec: number, ballSpeedSq = 0): BallVec {
+  const rate = ballSpeedSq > BALL_FAST_SPEED_SQ ? BALL_OFFSET_FAST_RATE : BALL_OFFSET_RATE;
   const k = Math.exp(-dtSec * rate);
   const next = { x: offset.x * k, y: offset.y * k, z: offset.z * k };
   if (Math.hypot(next.x, next.y, next.z) < 0.01) return { x: 0, y: 0, z: 0 };

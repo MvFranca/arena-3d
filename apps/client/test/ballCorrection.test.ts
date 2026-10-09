@@ -24,7 +24,10 @@ describe("ballCorrection", () => {
     expect(shown.x).toBe(1);
     expect(nextOwnBlend(1, false, 0.2)).toBeLessThan(1);
     expect(remoteContactsBall([{ x: 0.4, z: 0 }], 0, 0)).toBe(true);
+    expect(remoteContactsBall([{ x: 1.5, z: 0 }], 0, 0)).toBe(false);
     expect(remoteContactsBall([{ x: 6, z: 0 }], 0, 0)).toBe(false);
+    expect(localOwnsBall({ localX: 10, localZ: 0, ballX: 0, ballZ: 0, sinceLocalKickMs: 250 })).toBe(true);
+    expect(localOwnsBall({ localX: 10, localZ: 0, ballX: 0, ballZ: 0, sinceLocalKickMs: 290 })).toBe(false);
     expect(showPredictedBall(false, false)).toBe(true);
     expect(showPredictedBall(false, true)).toBe(false);
     expect(showPredictedBall(true, true)).toBe(true);
@@ -35,5 +38,12 @@ describe("ballCorrection", () => {
     expect(Math.abs(next.x)).toBeLessThan(0.4);
     expect(next.x).toBeGreaterThan(0);
     expect(next.z).toBeLessThan(0);
+  });
+
+  it("corrige o offset mais rapido quando a bola esta veloz", () => {
+    const slow = decayBallOffset({ x: 0.4, y: 0, z: 0 }, 0.05, 0);
+    const fast = decayBallOffset({ x: 0.4, y: 0, z: 0 }, 0.05, 81);
+    expect(fast.x).toBeLessThan(slow.x);
+    expect(fast.x).toBeGreaterThan(0);
   });
 });

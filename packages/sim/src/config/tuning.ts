@@ -4,7 +4,7 @@
  */
 export const TICK_RATE = 60;
 export const FIXED_DT = 1 / TICK_RATE;
-export const SNAPSHOT_EVERY_TICKS = 2; // 30 Hz
+export const SNAPSHOT_EVERY_TICKS = 1; // 60 Hz
 
 export const GRAVITY = -22; // mais forte que a real para a bola cair rapido (arcade)
 
