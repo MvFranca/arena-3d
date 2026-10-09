@@ -150,23 +150,24 @@ export function HomeScreen() {
             paddingRight: "env(safe-area-inset-right)",
           }}
         >
-        <header className="flex flex-col gap-2 px-4 py-3 md:flex-row md:items-center md:justify-between md:gap-3 md:px-6">
+        <header className="flex flex-col gap-4 px-4 pb-5 pt-4 md:flex-row md:items-end md:justify-between md:gap-6 md:px-6 md:pb-6 md:pt-5">
           <Logo small />
-          <label className="glass flex w-full items-center gap-2 rounded-full px-3 py-1.5 md:w-auto md:flex-1 md:max-w-md md:justify-center">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-white/40">Nome</span>
+          <label className="flex w-full flex-col gap-1.5 md:max-w-sm md:flex-1">
+            <span className="px-0.5 text-[11px] font-semibold uppercase tracking-widest text-white/55">Nome</span>
             <input
-              className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/30 md:w-44 md:flex-none"
+              className="w-full rounded-lg border border-white/35 bg-black/70 px-3.5 py-2.5 text-base text-white shadow-[0_8px_24px_rgba(0,0,0,0.4)] outline-none placeholder:text-white/35 focus:border-[#9fe3ff] focus:bg-black/80"
               value={name}
               maxLength={16}
               placeholder="Como quer ser chamado?"
+              aria-label="Nome"
               onChange={(e) => setState({ name: e.target.value })}
             />
           </label>
-          <div className="flex items-center gap-2">
-            <span className={`rounded-full px-2.5 py-1 text-[11px] ${apiOnline ? "bg-emerald-400/15 text-emerald-200" : "bg-white/10 text-white/50"}`}>
+          <div className="flex items-center gap-3">
+            <span className={`rounded-lg px-3 py-1.5 text-[11px] ${apiOnline ? "bg-emerald-400/15 text-emerald-200" : "bg-white/10 text-white/60"}`}>
               {apiOnline ? (user ? (user.guest ? "convidado" : user.name) : "conta…") : "offline"}
             </span>
-            <button className="btn btn-ghost rounded-full px-3 py-1 text-xs" onClick={() => setSettings((v) => !v)} title="Ajustes da câmera">
+            <button className="btn btn-ghost rounded-lg px-3 py-1.5 text-xs" onClick={() => setSettings((v) => !v)} title="Ajustes da câmera">
               Ajustes
             </button>
           </div>

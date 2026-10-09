@@ -2,7 +2,7 @@ import { getAbility, TICK_RATE } from "@arena/sim";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { resetTouchInput, touchInput } from "../game/touchInput";
 import { useAppState } from "../app/store";
-import { AbilityIcon, BallIcon } from "./icons";
+import { AbilityIcon, KickIcon } from "./icons";
 
 const TOUCH_MQ = "(max-width: 767px), (pointer: coarse)";
 const BASE_PORTRAIT = 132;
@@ -143,7 +143,7 @@ export function TouchControls() {
             testId="touch-ability"
           />
           <HoldButton
-            label={<BallIcon size={26} />}
+            label={<KickIcon size={36} />}
             hint="Chute"
             held={kickHeld}
             size={portrait ? 76 : 64}
@@ -183,7 +183,7 @@ function HoldButton(props: {
       type="button"
       disabled={props.disabled}
       data-testid={props.testId}
-      className={`touch-none rounded-full border font-display font-bold shadow-2xl backdrop-blur-sm ${
+      className={`flex touch-none flex-col items-center justify-center rounded-full border font-display font-bold shadow-2xl backdrop-blur-sm ${
         props.accent ? "border-[#ff4fd8]/60 bg-[#ff4fd8]/85 text-[#1a0a1f]" : "border-white/25 bg-black/45 text-white"
       } ${props.held ? "scale-95" : ""} ${props.disabled ? "opacity-40" : ""}`}
       style={{ width: props.size, height: props.size }}

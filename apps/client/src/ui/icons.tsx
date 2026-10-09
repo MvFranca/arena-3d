@@ -77,12 +77,14 @@ export function CloseIcon({ size = 14, className }: { size?: number; className?:
   );
 }
 
-export function BallIcon({ size = 20, className }: { size?: number; className?: string }) {
+/** Bola em movimento: o risco atrás é o chute. Feito para o botão redondo do celular. */
+export function KickIcon({ size = 36, className }: { size?: number; className?: string }) {
   return (
-    <Svg size={size} className={className}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 3c2.2 2.4 3.3 5.6 3.3 9S14.2 18.6 12 21M12 3C9.8 5.4 8.7 8.6 8.7 12S9.8 18.6 12 21M4 8.5h16M4 15.5h16" />
-    </Svg>
+    <svg viewBox="0 0 32 32" width={size} height={size} className={className} aria-hidden>
+      <path d="M1.6 10.5h5.4M1 16h6.6M2.2 21.5h4.2" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx="19.2" cy="16" r="9.2" fill="currentColor" />
+      <path d="M19.2 9.6 22.8 12.2 21.5 16.6 16.9 16.6 15.6 12.2 Z" fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth="1.6" strokeLinejoin="round" />
+    </svg>
   );
 }
 
