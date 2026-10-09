@@ -147,6 +147,7 @@ export class GameView {
 
     // Sincroniza views de jogadores com o estado.
     const seen = new Set<string>();
+    const kickPresses = new Set(this.host.consumeKickPresses());
     for (const p of s.players) {
       seen.add(p.id);
       let view = this.players.get(p.id);
@@ -158,6 +159,7 @@ export class GameView {
         this.players.set(p.id, view);
         this.scene.add(view.group);
       }
+      if (kickPresses.has(p.id)) view.triggerKick();
       view.update(p, dt, p.isLocal);
     }
     for (const [id, view] of this.players) {

@@ -2,7 +2,7 @@ import { CAMERA_RANGES, DEFAULT_CAMERA_PREFS, type CameraMode, type CameraPrefs 
 import { setCameraPrefs, useAppState } from "../app/store";
 
 export const CAMERA_MODE_LABEL: Record<CameraMode, string> = {
-  arena: "Arena",
+  arena: "De cima",
   thirdPerson: "Terceira pessoa",
 };
 
@@ -34,7 +34,7 @@ export function CameraSettings(props: { compact?: boolean; className?: string })
             onClick={() => setCameraPrefs({ mode: m })}
           >
             <div className="font-semibold">{CAMERA_MODE_LABEL[m]}</div>
-            {!props.compact && <div className="mt-0.5 text-xs text-white/50">{m === "arena" ? "Campo inteiro visível. Padrão competitivo." : "Atrás do seu jogador, seguindo a direção dele."}</div>}
+            {!props.compact && <div className="mt-0.5 text-xs text-white/50">{m === "arena" ? "Campo inteiro visível. Padrão, melhor na horizontal." : "Atrás do seu jogador, seguindo a direção dele."}</div>}
           </button>
         ))}
       </div>

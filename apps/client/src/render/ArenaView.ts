@@ -1,6 +1,22 @@
 import { playerWalkBounds, type ArenaConfig } from "@arena/sim";
 import * as THREE from "three";
 
+/** Grade da rede: so linhas horizontais e verticais, sem a face da boca do gol. */
+function netGrid(width: number, height: number, cols: number, rows: number): THREE.BufferGeometry {
+  const pos: number[] = [];
+  for (let i = 0; i <= cols; i++) {
+    const x = (i / cols - 0.5) * width;
+    pos.push(x, -height / 2, 0, x, height / 2, 0);
+  }
+  for (let j = 0; j <= rows; j++) {
+    const y = (j / rows - 0.5) * height;
+    pos.push(-width / 2, y, 0, width / 2, y, 0);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  return g;
+}
+
 /** Geometria procedural da arena. A malha e so visual; os colliders vivem na simulacao. */
 export class ArenaView {
   readonly group = new THREE.Group();
@@ -136,7 +152,7 @@ export class ArenaView {
     }
 
     const postMat = new THREE.MeshStandardMaterial({ color: "#f6f8ff", roughness: 0.22, metalness: 0.35 });
-    const netMat = new THREE.MeshBasicMaterial({ color: t.lines, wireframe: true, transparent: true, opacity: 0.32 });
+    const netMat = new THREE.LineBasicMaterial({ color: "#d7e0ee", transparent: true, opacity: 0.42 });
     for (const side of [-1, 1]) {
       const gx = side * L;
       const gw = arena.goalHalfWidth;
@@ -156,9 +172,21 @@ export class ArenaView {
       bar.rotation.x = Math.PI / 2;
       bar.position.set(gx, gh, 0);
       this.group.add(bar);
-      const net = new THREE.Mesh(new THREE.BoxGeometry(gd, gh, gw * 2, 4, 4, 7), netMat);
-      net.position.set(gx + side * (gd / 2), gh / 2, 0);
-      this.group.add(net);
+      // Rede so nas laterais, no fundo e em cima — a boca do gol fica aberta.
+      const inset = 0.08;
+      const depth = Math.max(0.4, gd - inset);
+      const midX = gx + side * (inset + depth / 2);
+      const backX = gx + side * gd;
+      const addNet = (w: number, h: number, cols: number, rows: number, x: number, y: number, z: number, rx: number, ry: number) => {
+        const lines = new THREE.LineSegments(netGrid(w, h, cols, rows), netMat);
+        lines.position.set(x, y, z);
+        lines.rotation.set(rx, ry, 0);
+        this.group.add(lines);
+      };
+      addNet(gw * 2, gh, 10, 6, backX, gh / 2, 0, 0, Math.PI / 2);
+      addNet(depth, gh, 5, 6, midX, gh / 2, gw, 0, 0);
+      addNet(depth, gh, 5, 6, midX, gh / 2, -gw, 0, 0);
+      addNet(depth, gw * 2, 5, 10, midX, gh, 0, -Math.PI / 2, 0);
       const glowColor = side < 0 ? t.left : t.right;
       const glow = new THREE.Mesh(
         new THREE.PlaneGeometry(gw * 2, gd),

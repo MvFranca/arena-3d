@@ -28,6 +28,37 @@ export function applyBallControl(p: SimPlayer, ball: RigidBody, tick: number): v
 }
 
 /**
+ * Direcao do chute se o jogador apertar agora: da posicao dele ate a bola,
+ * puxada um pouco para o lado do movimento conforme a precisao.
+ */
+export function predictKickDirection(
+  fromX: number,
+  fromZ: number,
+  ballX: number,
+  ballZ: number,
+  dirX: number,
+  dirZ: number,
+  yaw: number,
+  precisionSteer: number,
+): { x: number; z: number } {
+  const dx = ballX - fromX;
+  const dz = ballZ - fromZ;
+  const dist = Math.hypot(dx, dz);
+  let nx = dist > 1e-4 ? dx / dist : Math.cos(yaw);
+  let nz = dist > 1e-4 ? dz / dist : Math.sin(yaw);
+  const ilen = Math.hypot(dirX, dirZ);
+  if (ilen > 0.2) {
+    const s = precisionSteer;
+    nx = nx * (1 - s) + (dirX / ilen) * s;
+    nz = nz * (1 - s) + (dirZ / ilen) * s;
+    const l = Math.hypot(nx, nz) || 1;
+    nx /= l;
+    nz /= l;
+  }
+  return { x: nx, z: nz };
+}
+
+/**
  * Chute: so acontece se houver pedido valido no buffer e a bola estiver no alcance.
  * Direcao = jogador->bola, com desvio parcial para o input conforme a precisao.
  */
@@ -40,20 +71,9 @@ export function tryKick(p: SimPlayer, ball: RigidBody, tick: number): KickResult
   const dist = Math.hypot(dx, dz);
   if (dist > CONTACT_DIST + KICK.reach) return { kicked: false, power: 0 };
 
-  let nx = dist > 1e-4 ? dx / dist : Math.cos(p.yaw);
-  let nz = dist > 1e-4 ? dz / dist : Math.sin(p.yaw);
-
-  const ilen = Math.hypot(p.input.dirX, p.input.dirZ);
-  if (ilen > 0.2) {
-    const ix = p.input.dirX / ilen;
-    const iz = p.input.dirZ / ilen;
-    const s = p.stats.precisionSteer;
-    nx = nx * (1 - s) + ix * s;
-    nz = nz * (1 - s) + iz * s;
-    const l = Math.hypot(nx, nz) || 1;
-    nx /= l;
-    nz /= l;
-  }
+  const aim = predictKickDirection(a.x, a.z, b.x, b.z, p.input.dirX, p.input.dirZ, p.yaw, p.stats.precisionSteer);
+  const nx = aim.x;
+  const nz = aim.z;
 
   const pv = p.body.linvel();
   const along = Math.max(0, pv.x * nx + pv.z * nz);

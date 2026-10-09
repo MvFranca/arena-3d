@@ -8,7 +8,10 @@ import { connection } from "../../net/GameConnection";
 import { gameAudio } from "../../render/Audio";
 import { GameView } from "../../render/GameView";
 import { CameraSettings } from "../../ui/CameraSettings";
+import { ArrowIcon } from "../../ui/icons";
 import { Hud } from "../../ui/Hud";
+import { RotatePrompt } from "../../ui/RotatePrompt";
+import { TouchControls } from "../../ui/TouchControls";
 import { getState, initialHud, navigate, setHud, setState, toggleCameraMode, useAppState, type MatchResult } from "../store";
 
 export function MatchScreen() {
@@ -142,17 +145,19 @@ export function MatchScreen() {
 
   return (
     <div className="relative h-full w-full bg-[#0b1020]">
-      <canvas ref={canvasRef} className="h-full w-full" />
+      <canvas ref={canvasRef} className="h-full w-full touch-none" />
       {/* Seta para a bola fora do enquadramento (so em terceira pessoa); posicionada pelo GameView. */}
       <div ref={indicatorRef} data-testid="ball-indicator" className="pointer-events-none absolute left-0 top-0 opacity-0 transition-opacity duration-150 will-change-transform">
         <div className="flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-xs font-semibold text-white shadow-lg ring-1 ring-white/20">
           <span className="h-2.5 w-2.5 rounded-full bg-white shadow-[0_0_8px_#fff]" />
-          <span aria-hidden>➜</span>
+          <ArrowIcon size={12} />
         </div>
       </div>
       <Hud leftColor={theme.left} rightColor={theme.right} onLeave={leave} showPing={mode === "online"} cameraLocked={cameraLocked} onToggleCameraPanel={() => setCameraPanel((v) => !v)} />
+      <TouchControls />
+      <RotatePrompt />
       {cameraPanel && (
-        <div className="glass absolute right-5 top-24 w-80 rounded-2xl p-4 shadow-2xl" data-testid="camera-panel">
+        <div className="glass absolute left-2 top-16 z-30 w-80 max-w-[calc(100%-1rem)] rounded-2xl p-4 shadow-2xl md:left-5 md:top-20" data-testid="camera-panel">
           <div className="mb-2 flex items-center justify-between">
             <h3 className="font-display text-sm font-bold">Câmera</h3>
             <button className="btn btn-ghost px-2 py-0.5 text-xs" onClick={() => setCameraPanel(false)}>

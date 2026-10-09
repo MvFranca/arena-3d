@@ -65,6 +65,10 @@ export class PlayerView {
   private readonly inner = new THREE.Group();
   private readonly label: THREE.Sprite;
   private kickAnim = 0;
+  /** 1 no clique do chute, decai até 0. Independente de ter acertado a bola. */
+  private ringFlash = 0;
+  private readonly ringRest: THREE.Color;
+  private readonly ringRestOpacity: number;
   private bob = 0;
   private lastYaw = 0;
   private visualX = 0;
@@ -150,7 +154,9 @@ export class PlayerView {
     this.neonEdge.visible = look.neon;
     this.inner.add(this.neonEdge);
 
-    this.ringMat = new THREE.MeshBasicMaterial({ color: player.isLocal ? accent : teamColor, transparent: true, opacity: player.isLocal ? look.ringOpacity : look.ringOpacity * 0.4, depthWrite: false });
+    this.ringRestOpacity = player.isLocal ? look.ringOpacity : look.ringOpacity * 0.4;
+    this.ringMat = new THREE.MeshBasicMaterial({ color: player.isLocal ? accent : teamColor, transparent: true, opacity: this.ringRestOpacity, depthWrite: false });
+    this.ringRest = this.ringMat.color.clone();
     this.ring = new THREE.Mesh(ringGeo, this.ringMat);
     this.ring.rotation.x = -Math.PI / 2;
     this.ring.position.y = 0.02;
@@ -184,6 +190,7 @@ export class PlayerView {
 
   triggerKick(): void {
     this.kickAnim = 1;
+    this.ringFlash = 1;
   }
 
   get visualYaw(): number {
@@ -234,7 +241,10 @@ export class PlayerView {
     const stretch = dashing ? 1.16 : 1;
     this.inner.scale.set(stretch, 1 / Math.sqrt(stretch), 1 / Math.sqrt(stretch));
 
-    if (((p.flags & PLAYER_FLAG_KICKING) !== 0) && this.kickAnim <= 0) this.kickAnim = 1;
+    if (((p.flags & PLAYER_FLAG_KICKING) !== 0) && this.kickAnim <= 0) {
+      this.kickAnim = 1;
+      this.ringFlash = 1;
+    }
     if (this.kickAnim > 0) {
       this.kickAnim = Math.max(0, this.kickAnim - dt * 5.2);
       const s = Math.sin(this.kickAnim * Math.PI);
@@ -244,6 +254,14 @@ export class PlayerView {
     } else {
       this.rightFoot.position.x = PLAYER.radius * 0.42;
       this.rightFoot.position.y = 0.1;
+    }
+    if (this.ringFlash > 0) {
+      this.ringFlash = Math.max(0, this.ringFlash - dt * 2.4);
+      this.ringMat.color.setHex(0xffffff);
+      this.ringMat.opacity = 1;
+    } else {
+      this.ringMat.color.copy(this.ringRest);
+      this.ringMat.opacity = this.ringRestOpacity;
     }
     this.leftFoot.position.x = PLAYER.radius * 0.42;
     this.leftFoot.position.y = 0.1 + Math.max(0, -swing) * 0.04;

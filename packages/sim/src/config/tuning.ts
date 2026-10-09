@@ -13,7 +13,7 @@ export const PLAYER = {
   halfHeight: 0.45, // capsula: altura total = 2*(halfHeight+radius)
   /** Folga acima do chao. O jogador e travado em Y, entao nunca encosta no piso. */
   hover: 0.03,
-  baseMaxSpeed: 11,
+  baseMaxSpeed: 9.4,
   baseAcceleration: 42,
   baseMass: 80,
   linearDamping: 0.9,
@@ -42,7 +42,7 @@ export function playerWalkBounds(arena: { halfLength: number; halfWidth: number;
 export const PLAYER_CENTER_Y = PLAYER.halfHeight + PLAYER.radius + PLAYER.hover;
 
 export const BALL = {
-  radius: 0.5,
+  radius: 0.42,
   mass: 1.4,
   linearDamping: 0.55,
   angularDamping: 1.6,

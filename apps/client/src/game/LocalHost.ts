@@ -66,6 +66,14 @@ export class LocalHost implements SimulationHost {
     interpolateStates(out, this.prev, this.curr, alpha, this.localPlayerIds);
   }
 
+  consumeKickPresses(): string[] {
+    const ids: string[] = [];
+    for (const { id, collector } of this.inputs) {
+      if (collector.consumeKickPulse()) ids.push(id);
+    }
+    return ids;
+  }
+
   drainEvents(): MatchEvent[] {
     const out = this.events.slice();
     this.events.length = 0;

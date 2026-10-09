@@ -343,6 +343,10 @@ export class RemoteHost implements SimulationHost {
     }
   }
 
+  consumeKickPresses(): string[] {
+    return this.input.consumeKickPulse() ? [this.localPlayerId] : [];
+  }
+
   drainEvents(): MatchEvent[] {
     const out = this.events.slice();
     this.events.length = 0;

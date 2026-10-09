@@ -30,6 +30,8 @@ export function collisionGroups(membership: number, filter: number): number {
 const GROUPS_ENV = collisionGroups(COLLISION.ENV, COLLISION.PLAYER | COLLISION.BALL);
 const GROUPS_WALL_BALL = collisionGroups(COLLISION.WALL_BALL, COLLISION.BALL);
 const GROUPS_WALL_PLAYER = collisionGroups(COLLISION.WALL_PLAYER, COLLISION.PLAYER);
+/** Trave e rede: a bola quica e o jogador não atravessa. */
+const GROUPS_GOAL = collisionGroups(COLLISION.WALL_BALL | COLLISION.WALL_PLAYER, COLLISION.BALL | COLLISION.PLAYER);
 const GROUPS_PLAYER = collisionGroups(
   COLLISION.PLAYER,
   COLLISION.ENV | COLLISION.WALL_PLAYER | COLLISION.PLAYER | COLLISION.BALL,
@@ -89,11 +91,23 @@ export function createArenaWorld(arena: ArenaConfig): RapierWorld {
     addBox(thick, barH, arena.goalHalfWidth, x, arena.goalHeight + barH, 0, wallR, 0.1, GROUPS_WALL_BALL);
     const depth = arena.goalDepth;
     const backX = side * (L + depth + thick);
-    addBox(thick, arena.goalHeight / 2, arena.goalHalfWidth + thick, backX, arena.goalHeight / 2, 0, 0.1, 0.8, GROUPS_WALL_BALL);
-    const sideX = side * (L + depth / 2 + thick);
-    addBox(depth / 2, arena.goalHeight / 2, thick, sideX, arena.goalHeight / 2, arena.goalHalfWidth + thick, 0.1, 0.8, GROUPS_WALL_BALL);
-    addBox(depth / 2, arena.goalHeight / 2, thick, sideX, arena.goalHeight / 2, -(arena.goalHalfWidth + thick), 0.1, 0.8, GROUPS_WALL_BALL);
-    addBox(depth / 2 + thick, thick / 2, arena.goalHalfWidth + thick, sideX, arena.goalHeight + thick / 2, 0, 0.1, 0.8, GROUPS_WALL_BALL);
+    addBox(thick, arena.goalHeight / 2, arena.goalHalfWidth + thick, backX, arena.goalHeight / 2, 0, 0.1, 0.8, GROUPS_GOAL);
+    const sideX = side * (L + depth / 2);
+    addBox(depth / 2, arena.goalHeight / 2, thick, sideX, arena.goalHeight / 2, arena.goalHalfWidth + thick, 0.1, 0.8, GROUPS_GOAL);
+    addBox(depth / 2, arena.goalHeight / 2, thick, sideX, arena.goalHeight / 2, -(arena.goalHalfWidth + thick), 0.1, 0.8, GROUPS_GOAL);
+    const roofX = side * (L + depth / 2 + thick);
+    addBox(depth / 2 + thick, thick / 2, arena.goalHalfWidth + thick, roofX, arena.goalHeight + thick / 2, 0, 0.1, 0.8, GROUPS_WALL_BALL);
+    const postR = 0.2;
+    for (const z of [-arena.goalHalfWidth, arena.goalHalfWidth]) {
+      world.createCollider(
+        RAPIER.ColliderDesc.cylinder(arena.goalHeight / 2, postR)
+          .setTranslation(side * L, arena.goalHeight / 2, z)
+          .setRestitution(wallR)
+          .setFriction(0.2)
+          .setCollisionGroups(GROUPS_GOAL),
+        fixed,
+      );
+    }
   }
 
   // Limite externo retangular: so o jogador. Bola ja esta contida nas paredes internas.

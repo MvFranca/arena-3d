@@ -1,11 +1,33 @@
 import { formatClock, getArena } from "@arena/sim";
+import { useEffect } from "react";
 import { navigate, useAppState } from "../store";
 import { Card, Logo, Shell } from "../../ui/common";
+import { blurFieldOnEscape, isFormField } from "../../ui/keys";
 
 export function ResultScreen() {
   const result = useAppState((s) => s.result);
   const room = useAppState((s) => s.room);
   const theme = (room?.arena ?? getArena(room?.ruleset.arenaId ?? "classic")).theme;
+
+  useEffect(() => {
+    if (!result) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (blurFieldOnEscape(e.target)) return;
+        navigate("home");
+        return;
+      }
+      if (e.key !== "Enter" || isFormField(e.target) || e.target instanceof HTMLButtonElement) return;
+      e.preventDefault();
+      if (result.mode === "local") navigate("match");
+      else if (room) navigate("lobby");
+      else navigate("home");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   if (!result) {
     navigate("home");
     return null;

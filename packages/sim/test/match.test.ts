@@ -214,17 +214,29 @@ describe("perimetro haxball", () => {
     sim.dispose();
   });
 
-  it("entra no gol e circula atras da rede sem escapar", async () => {
+  it("entra no gol e para na rede", async () => {
     const sim = await createSim();
     skipCountdown(sim);
     const L = sim.arena.halfLength;
-    const outer = L + sim.arena.goalDepth + PLAYER.corridorWidth;
     sim.setPlayerTransform("a", L - 0.4, 0);
     sim.setInput("a", input({ dirX: 1 }));
     stepN(sim, 220);
     const pos = sim.getPlayerPosition("a")!;
-    expect(pos.x).toBeGreaterThan(L + sim.arena.goalDepth * 0.4);
-    expect(pos.x).toBeLessThan(outer + 0.05);
+    expect(pos.x).toBeGreaterThan(L + 0.2);
+    expect(pos.x).toBeLessThan(L + sim.arena.goalDepth);
+    sim.dispose();
+  });
+
+  it("nao atravessa a trave", async () => {
+    const sim = await createSim();
+    skipCountdown(sim);
+    const L = sim.arena.halfLength;
+    const gw = sim.arena.goalHalfWidth;
+    sim.setPlayerTransform("a", L - 1.4, gw);
+    sim.setInput("a", input({ dirX: 1 }));
+    stepN(sim, 160);
+    const pos = sim.getPlayerPosition("a")!;
+    expect(pos.x).toBeLessThan(L);
     sim.dispose();
   });
 

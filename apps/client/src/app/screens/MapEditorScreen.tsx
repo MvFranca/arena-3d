@@ -1,8 +1,9 @@
 import { ARENAS, ARENA_BOUNDS, sanitizeArena, type ArenaConfig } from "@arena/sim";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { connection } from "../../net/GameConnection";
 import { api } from "../../session/api";
 import { Card, ErrorBanner, Logo, Shell } from "../../ui/common";
+import { blurFieldOnEscape } from "../../ui/keys";
 import { MapPreview } from "../../ui/MapPreview";
 import { getState, navigate, setState, useAppState } from "../store";
 
@@ -46,6 +47,17 @@ export function MapEditorScreen() {
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      if (blurFieldOnEscape(e.target)) return;
+      navigate(room ? "lobby" : "home");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const useInRoom = () => {
     const id = savedId;

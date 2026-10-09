@@ -73,6 +73,8 @@ export interface SimulationHost {
   render(out: RenderState): void;
   /** Eventos acumulados desde a ultima chamada (array reutilizado). */
   drainEvents(): MatchEvent[];
+  /** Ids locais que apertaram chute desde a última leitura. */
+  consumeKickPresses(): string[];
   readonly localPlayerIds: string[];
   readonly pingMs: number;
   readonly netDebug?: NetDebug;

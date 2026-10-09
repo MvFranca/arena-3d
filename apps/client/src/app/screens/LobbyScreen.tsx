@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { connection } from "../../net/GameConnection";
 import { CameraSettings } from "../../ui/CameraSettings";
 import { Card, ErrorBanner, Logo, Shell } from "../../ui/common";
+import { blurFieldOnEscape, isFormField } from "../../ui/keys";
 import { MapSelect } from "../../ui/MapSelect";
 import { navigate, setState, useAppState } from "../store";
 
@@ -23,6 +24,30 @@ export function LobbyScreen() {
 
   useEffect(() => connection.on("left", () => navigate("home")), []);
   useEffect(() => connection.on("error", (_c, m) => setState({ error: m })), []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!room) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (blurFieldOnEscape(e.target)) return;
+        leave();
+        return;
+      }
+      if (e.key !== "Enter" || isFormField(e.target) || e.target instanceof HTMLButtonElement) return;
+      const player = room.players.find((p) => p.slot === mySlot);
+      if (!player || room.automatic || room.phase !== "lobby") return;
+      e.preventDefault();
+      if (player.isHost) {
+        const ready = room.players.length >= 2 && room.players.every((p) => p.ready || p.isHost);
+        if (ready) connection.sendJson({ t: "start" });
+      } else {
+        connection.sendJson({ t: "ready", ready: !player.ready });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   if (!room) return null;
   const me = room.players.find((p) => p.slot === mySlot);

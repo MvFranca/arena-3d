@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api, type MatchHistoryItem, type PlayerStats } from "../../session/api";
 import { CameraSettings } from "../../ui/CameraSettings";
 import { Card, ErrorBanner, Logo, Shell } from "../../ui/common";
+import { blurFieldOnEscape, isFormField } from "../../ui/keys";
 import { getState, navigate, setState, useAppState } from "../store";
 
 const ATTR_LABEL: Record<keyof Attributes, string> = {
@@ -32,6 +33,23 @@ export function ProfileScreen() {
     api.stats().then((r) => setStats(r.stats)).catch(() => undefined);
     api.history().then((r) => setHistory(r.matches)).catch(() => undefined);
   }, [apiOnline]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (blurFieldOnEscape(e.target)) return;
+        navigate("home");
+        return;
+      }
+      if (e.key === "Enter" && !isFormField(e.target) && !(e.target instanceof HTMLButtonElement)) {
+        e.preventDefault();
+        void save();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const used = attributeBudgetUsed(draft.attributes);
   const remaining = ATTR.budget - used;
@@ -65,11 +83,17 @@ export function ProfileScreen() {
 
   return (
     <Shell wide>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <Logo small />
-        <button className="btn btn-ghost" onClick={() => navigate("home")}>
-          ← Voltar
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {saved && <span className="text-sm text-emerald-300">salvo</span>}
+                    <button className="btn btn-ghost" onClick={() => navigate("home")}>
+            ← Voltar
+          </button>
+          <button className="btn btn-primary px-4 py-2" disabled={remaining < 0 || saving} onClick={() => void save()}>
+            Salvar
+          </button>
+        </div>
       </div>
       <ErrorBanner message={error} onClose={() => setState({ error: null })} />
       <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
@@ -130,12 +154,6 @@ export function ProfileScreen() {
             ))}
           </div>
 
-          <div className="mt-6 flex items-center justify-end gap-3">
-            {saved && <span className="text-sm text-emerald-300">salvo</span>}
-            <button className="btn btn-primary" disabled={remaining < 0 || saving} onClick={() => void save()}>
-              Salvar loadout
-            </button>
-          </div>
         </Card>
 
         <div className="flex flex-col gap-4">

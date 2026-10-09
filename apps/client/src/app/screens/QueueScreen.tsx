@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { connection } from "../../net/GameConnection";
 import { api } from "../../session/api";
 import { Card, Logo, Shell } from "../../ui/common";
+import { blurFieldOnEscape } from "../../ui/keys";
 import { getState, navigate, setState, showError, useAppState } from "../store";
 
 export function QueueScreen() {
@@ -52,6 +53,17 @@ export function QueueScreen() {
       clearInterval(t);
     };
   }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      if (blurFieldOnEscape(e.target)) return;
+      void cancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const cancel = async () => {
     try {

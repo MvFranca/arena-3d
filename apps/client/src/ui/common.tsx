@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { CloseIcon } from "./icons";
 
 export function Shell({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
@@ -46,7 +47,7 @@ export function ErrorBanner({ message, onClose }: { message: string | null; onCl
     <div className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-red-400/30 bg-red-500/15 px-4 py-3 text-sm text-red-100">
       <span>{message}</span>
       <button className="text-red-200/70 hover:text-white" onClick={onClose}>
-        ✕
+        <CloseIcon size={12} />
       </button>
     </div>
   );
