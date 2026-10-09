@@ -1,0 +1,33 @@
+name: Deploy Oracle
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/game-server/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - "deploy/oracle/**"
+      - ".github/workflows/deploy-oracle.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Atualiza o game server na VM
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: 152.67.61.207
+          username: opc
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          command_timeout: 10m
+          script_stop: true
+          script: |
+            set -euo pipefail
+            export PATH="/usr/local/bin:${PATH}"
+            cd /home/opc/arena
+            git fetch origin main
+            git reset --hard origin/main
+            bash deploy/oracle/update.sh
