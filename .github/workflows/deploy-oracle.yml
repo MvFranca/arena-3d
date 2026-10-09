@@ -16,7 +16,21 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Atualiza o game server na VM
+      - name: Baixa o código
+        uses: actions/checkout@v4
+
+      - name: Envia os arquivos para a VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 152.67.61.207
+          username: opc
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          source: "apps/game-server,packages,package.json,pnpm-lock.yaml,pnpm-workspace.yaml,deploy/oracle"
+          target: "/home/opc/arena"
+          overwrite: true
+          strip_components: 0
+
+      - name: Instala e reinicia o game server
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: 152.67.61.207
@@ -24,10 +38,4 @@ jobs:
           key: ${{ secrets.ORACLE_SSH_KEY }}
           command_timeout: 10m
           script_stop: true
-          script: |
-            set -euo pipefail
-            export PATH="/usr/local/bin:${PATH}"
-            cd /home/opc/arena
-            git fetch origin main
-            git reset --hard origin/main
-            bash deploy/oracle/update.sh
+          script: bash /home/opc/arena/deploy/oracle/update.sh

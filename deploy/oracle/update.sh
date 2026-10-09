@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Rode DENTRO da VM, na pasta do repo. O GitHub Actions chama este script.
+# Rode dentro da VM depois que os arquivos novos já estão em /home/opc/arena.
+# A VM não tem git. Quem envia o código é o GitHub Actions.
 export PATH="/usr/local/bin:${PATH}"
 export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=384}"
 
 cd /home/opc/arena
-git fetch origin main
-git reset --hard origin/main
 pnpm install --filter @arena/game-server...
 sudo systemctl restart arena-game
 sudo systemctl restart caddy
