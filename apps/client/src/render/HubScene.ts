@@ -2,6 +2,7 @@ import { BALL, getArena, PLAYER_FLAG_CHARGED, PLAYER_FLAG_DASH, PLAYER_FLAG_KICK
 import * as THREE from "three";
 import type { RenderBall, RenderPlayer } from "../game/types";
 import { ArenaView } from "./ArenaView";
+import { EnvironmentView } from "./EnvironmentView";
 import { BallView } from "./BallView";
 import { PlayerView } from "./PlayerView";
 
@@ -20,6 +21,7 @@ export class HubScene {
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
   private readonly arenaView: ArenaView;
+  private readonly environment: EnvironmentView;
   private readonly ballView: BallView;
   private playerView: PlayerView;
   private readonly dummy: RenderPlayer;
@@ -75,6 +77,8 @@ export class HubScene {
     rim.position.set(0, 10, -W - 6);
     this.scene.add(rim);
 
+    this.environment = new EnvironmentView(arena);
+    this.scene.add(this.environment.group);
     this.arenaView = new ArenaView(arena);
     this.scene.add(this.arenaView.group);
     this.ballView = new BallView(t.accent);
@@ -137,6 +141,7 @@ export class HubScene {
     cancelAnimationFrame(this.raf);
     this.resizeObserver.disconnect();
     this.playerView.dispose();
+    this.environment.dispose();
     this.renderer.dispose();
   }
 
@@ -158,6 +163,7 @@ export class HubScene {
     this.playerView.update(this.dummy, dt, false);
     this.ballView.update(this.ball, dt);
     this.arenaView.update(dt);
+    this.environment.update(dt);
     this.updateCamera();
     this.renderer.render(this.scene, this.camera);
   }

@@ -207,6 +207,16 @@ export class ArenaView {
         this.group.add(s);
       }
     }
+    // Atrás de cada gol, fora da rede e do corredor. A largura cabe entre as laterais.
+    const endSpan = W * 2 + 4.4;
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const s = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.15, endSpan), standMat);
+        s.position.set(side * (L + arena.goalDepth + 3.4 + i * 2.1), 0.55 + i * 1.15, 0);
+        s.receiveShadow = true;
+        this.group.add(s);
+      }
+    }
 
     const boardMatL = new THREE.MeshStandardMaterial({ color: t.left, emissive: t.left, emissiveIntensity: 0.45, roughness: 0.4 });
     const boardMatR = new THREE.MeshStandardMaterial({ color: t.right, emissive: t.right, emissiveIntensity: 0.45, roughness: 0.4 });

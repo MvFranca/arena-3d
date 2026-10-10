@@ -2,6 +2,7 @@ import type { ArenaConfig } from "@arena/sim";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { ArenaView } from "../render/ArenaView";
+import { EnvironmentView } from "../render/EnvironmentView";
 
 export function MapPreview({ arena }: { arena: ArenaConfig }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -17,6 +18,8 @@ export function MapPreview({ arena }: { arena: ArenaConfig }) {
     const sun = new THREE.DirectionalLight(0xffffff, 1.8);
     sun.position.set(-12, 24, 16);
     scene.add(sun);
+    const environment = new EnvironmentView(arena);
+    scene.add(environment.group);
     const view = new ArenaView(arena);
     scene.add(view.group);
     const camera = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 200);
@@ -39,6 +42,7 @@ export function MapPreview({ arena }: { arena: ArenaConfig }) {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       view.update(dt);
+      environment.update(dt);
       renderer.render(scene, camera);
     };
     raf = requestAnimationFrame(loop);
@@ -47,6 +51,7 @@ export function MapPreview({ arena }: { arena: ArenaConfig }) {
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
+      environment.dispose();
       renderer.dispose();
     };
   }, [arena]);

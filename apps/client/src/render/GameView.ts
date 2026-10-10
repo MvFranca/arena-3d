@@ -4,6 +4,7 @@ import type { CameraMode } from "../app/cameraPrefs";
 import { getState } from "../app/store";
 import { createRenderState, type RenderState, type SimulationHost } from "../game/types";
 import { ArenaView } from "./ArenaView";
+import { EnvironmentView } from "./EnvironmentView";
 import { gameAudio } from "./Audio";
 import { BallView } from "./BallView";
 import { CameraRig, type CameraFocus } from "./CameraRig";
@@ -28,6 +29,7 @@ export class GameView {
   readonly arena: ArenaConfig;
   private readonly rig: CameraRig;
   private readonly arenaView: ArenaView;
+  private readonly environment: EnvironmentView;
   private readonly ballView: BallView;
   private readonly players = new Map<string, PlayerView>();
   private readonly particles = new ParticleSystem();
@@ -83,6 +85,8 @@ export class GameView {
     rim.position.set(0, 10, -W - 6);
     this.scene.add(rim);
 
+    this.environment = new EnvironmentView(this.arena);
+    this.scene.add(this.environment.group);
     this.arenaView = new ArenaView(this.arena);
     this.scene.add(this.arenaView.group);
     this.ballView = new BallView(t.accent);
@@ -172,6 +176,7 @@ export class GameView {
 
     this.ballView.update(s.ball, dt);
     this.arenaView.update(dt);
+    this.environment.update(dt);
     this.particles.update(dt);
     this.rings.update(dt);
     if (this.flashMat.opacity > 0) this.flashMat.opacity = Math.max(0, this.flashMat.opacity - dt * 2.5);
@@ -329,6 +334,7 @@ export class GameView {
     cameraState.yaw = -Math.PI / 2;
     for (const v of this.players.values()) v.dispose();
     this.players.clear();
+    this.environment.dispose();
     this.renderer.dispose();
   }
 }
