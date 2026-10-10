@@ -21,6 +21,42 @@ describe("fases e relogio", () => {
     sim.dispose();
   });
 
+  it("tempo 0 nao encerra a partida", async () => {
+    const sim = await createSim({ durationSeconds: 0 });
+    skipCountdown(sim);
+    stepN(sim, 200);
+    expect(sim.phase).toBe("playing");
+    sim.dispose();
+  });
+
+  it("pausa congela relogio e movimento", async () => {
+    const sim = await createSim();
+    skipCountdown(sim);
+    const before = sim.clockTicksRemaining;
+    const pos = sim.getPlayerPosition("a")!;
+    sim.setPaused(true);
+    sim.setInput("a", input({ dirX: 1 }));
+    stepN(sim, 30);
+    const held = sim.getPlayerPosition("a")!;
+    expect(sim.phase).toBe("playing");
+    expect(sim.clockTicksRemaining).toBe(before);
+    expect(held.x).toBeCloseTo(pos.x, 3);
+    sim.setPaused(false);
+    stepN(sim, 10);
+    expect(sim.clockTicksRemaining).toBe(before - 10);
+    sim.dispose();
+  });
+
+  it("limite de gols encerra no tick seguinte", async () => {
+    const sim = await createSim({ scoreLimit: 2 });
+    skipCountdown(sim);
+    sim.scoreLeft = 2;
+    const events = stepN(sim, 1);
+    expect(sim.phase).toBe("finished");
+    expect(events.some((e) => e.type === "match_ended")).toBe(true);
+    sim.dispose();
+  });
+
   it("termina quando o relogio zera", async () => {
     const sim = await createSim();
     skipCountdown(sim);

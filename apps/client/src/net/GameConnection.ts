@@ -44,6 +44,8 @@ export class GameConnection {
   private url = "";
   private hello: HelloOptions | null = null;
   status: ConnectionStatus = "disconnected";
+  /** Motivo quando o welcome falha, por exemplo versão de protocolo diferente. */
+  handshakeError: string | null = null;
   sessionId: string | null = null;
   playerId: string | null = null;
   room: RoomInfo | null = null;
@@ -86,6 +88,7 @@ export class GameConnection {
   /** Abre a conexao e espera o welcome. */
   connect(url: string, hello: HelloOptions): Promise<boolean> {
     this.disconnect();
+    this.handshakeError = null;
     this.url = url;
     this.hello = hello;
     this.intentionalClose = false;
@@ -162,6 +165,7 @@ export class GameConnection {
       case "error":
         this.emit("error", msg.code, msg.message);
         if (this.welcomeResolve) {
+          this.handshakeError = msg.message;
           this.welcomeResolve(false);
           this.welcomeResolve = null;
         }

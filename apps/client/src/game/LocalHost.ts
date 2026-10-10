@@ -46,6 +46,14 @@ export class LocalHost implements SimulationHost {
     copyMatchState(this.curr, this.prev);
   }
 
+  setInputEnabled(enabled: boolean): void {
+    for (const i of this.inputs) i.collector.setEnabled(enabled);
+  }
+
+  setPaused(paused: boolean): void {
+    this.sim.setPaused(paused);
+  }
+
   update(deltaMs: number): void {
     this.accumulator += Math.min(deltaMs, MAX_FRAME_MS);
     let steps = 0;

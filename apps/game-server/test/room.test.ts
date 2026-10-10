@@ -1,5 +1,7 @@
-import { PLAYER_FLAG_CONNECTED, TICK_RATE } from "@arena/sim";
+import { PROTOCOL_VERSION } from "@arena/protocol";
+import { getRuleset, PLAYER_FLAG_CONNECTED, TICK_RATE } from "@arena/sim";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { WebSocket } from "ws";
 import { sleep, startServer, TestClient, type TestServer } from "./helpers";
 
 let server: TestServer;
@@ -11,6 +13,26 @@ afterEach(async () => {
 });
 
 describe("sala", () => {
+  it("rejeita cliente com versao antiga do protocolo", async () => {
+    const ws = new WebSocket(`ws://127.0.0.1:${server.port}`);
+    const messages: { t: string; code?: string; message?: string }[] = [];
+    ws.on("message", (data, isBinary) => {
+      if (!isBinary) messages.push(JSON.parse(data.toString()) as { t: string; code?: string; message?: string });
+    });
+    await new Promise<void>((resolve, reject) => {
+      ws.once("open", () => resolve());
+      ws.once("error", reject);
+    });
+    ws.send(JSON.stringify({ t: "hello", v: PROTOCOL_VERSION - 1, name: "Ana" }));
+    await sleep(200);
+    expect(messages.some((m) => m.t === "welcome")).toBe(false);
+    expect(messages.find((m) => m.t === "error")).toMatchObject({
+      code: "protocol",
+      message: "Versão do cliente incompatível. Recarregue a página.",
+    });
+    ws.close();
+  });
+
   it("cria, entra com codigo, fica pronto e comeca", async () => {
     const a = new TestClient(server.port);
     const b = new TestClient(server.port);
@@ -247,5 +269,108 @@ describe("alocacao interna", () => {
     const bad = await fetch(`http://127.0.0.1:${server.port}/internal/rooms`, { method: "POST", headers: { "x-internal-secret": "wrong" } });
     expect(bad.status).toBe(401);
     a.close();
+  });
+});
+
+describe("limites, pausa e espectadores", () => {
+  it("host muda tempo e gols sem alterar o modo global", async () => {
+    const before = getRuleset("duel").durationSeconds;
+    const a = new TestClient(server.port);
+    await a.connect("Ana");
+    a.send({ t: "create", rulesetId: "duel" });
+    await a.waitFor(() => !!a.room);
+    a.send({ t: "set_limits", durationSeconds: 60, scoreLimit: 5 });
+    await a.waitFor(() => a.room?.ruleset.durationSeconds === 60 && a.room.ruleset.scoreLimit === 5);
+    expect(a.room!.ruleset.maxPlayers).toBe(16);
+    expect(getRuleset("duel").durationSeconds).toBe(before);
+    expect(getRuleset("duel").scoreLimit).toBe(0);
+    a.close();
+  });
+
+  it("so o host pausa e move os outros; espectador sai do snapshot", async () => {
+    const a = new TestClient(server.port);
+    const b = new TestClient(server.port);
+    const c = new TestClient(server.port);
+    await a.connect("Ana");
+    await b.connect("Bia");
+    await c.connect("Cris");
+    a.send({ t: "create", rulesetId: "duel" });
+    await a.waitFor(() => !!a.room);
+    b.send({ t: "join", code: a.room!.code });
+    c.send({ t: "join", code: a.room!.code });
+    await a.waitFor(() => a.room?.players.length === 3);
+    expect(a.room!.players.find((p) => p.name === "Cris")?.team).toBe("spec");
+
+    const bia = a.room!.players.find((p) => p.name === "Bia")!;
+    b.send({ t: "pause", paused: true });
+    await b.waitFor(() => b.errors.some((e) => e.code === "not_host"));
+    b.send({ t: "assign", playerId: a.room!.players.find((p) => p.name === "Ana")!.id, team: "spec" });
+    await b.waitFor(() => b.errors.some((e) => e.code === "not_host"));
+
+    b.send({ t: "ready", ready: true });
+    await a.waitFor(() => !!a.room?.players.find((p) => p.name === "Bia")?.ready);
+    a.send({ t: "start" });
+    await a.waitFor(() => a.room?.phase === "countdown");
+    server.tick(TICK_RATE * 3 + 5);
+    await sleep(30);
+    expect(a.snapshots.at(-1)!.phase).toBe("playing");
+    expect(a.snapshots.at(-1)!.players).toHaveLength(2);
+
+    a.send({ t: "set_arena", arena: { ...a.room!.arena, halfLength: 18, name: "Editada" } });
+    await a.waitFor(() => a.errors.some((e) => e.code === "pause_first"));
+
+    a.send({ t: "pause", paused: true });
+    await a.waitFor(() => a.room?.paused === true);
+    server.tick(2);
+    await sleep(20);
+    const clock = a.snapshots.at(-1)!.clockTicksRemaining;
+    expect(a.snapshots.at(-1)!.paused).toBe(true);
+    server.tick(40);
+    await sleep(20);
+    expect(a.snapshots.at(-1)!.clockTicksRemaining).toBe(clock);
+
+    a.send({ t: "set_arena", arena: { ...a.room!.arena, halfLength: 18, name: "Editada" } });
+    await a.waitFor(() => a.room?.arena.halfLength === 18 && a.room.paused === true && a.room.phase === "playing");
+
+    a.send({ t: "assign", playerId: bia.id, team: "spec" });
+    await a.waitFor(() => a.room?.players.find((p) => p.id === bia.id)?.team === "spec");
+    server.tick(2);
+    await sleep(20);
+    expect(a.snapshots.at(-1)!.players).toHaveLength(1);
+
+    const cris = a.room!.players.find((p) => p.name === "Cris")!;
+    a.send({ t: "assign", playerId: cris.id, team: "left" });
+    await a.waitFor(() => a.errors.some((e) => e.code === "team_full"));
+
+    a.close();
+    b.close();
+    c.close();
+  });
+
+  it("host reinicia e a sala volta para a configuracao", async () => {
+    const a = new TestClient(server.port);
+    const b = new TestClient(server.port);
+    await a.connect("Ana");
+    await b.connect("Bia");
+    a.send({ t: "create", rulesetId: "duel" });
+    await a.waitFor(() => !!a.room);
+    b.send({ t: "join", code: a.room!.code });
+    await a.waitFor(() => a.room?.players.length === 2);
+    a.send({ t: "set_limits", durationSeconds: 120, scoreLimit: 3 });
+    await a.waitFor(() => a.room?.ruleset.scoreLimit === 3);
+    b.send({ t: "ready", ready: true });
+    await a.waitFor(() => !!a.room?.players.find((p) => p.name === "Bia")?.ready);
+    a.send({ t: "start" });
+    await a.waitFor(() => a.room?.phase === "countdown");
+    b.send({ t: "restart" });
+    await b.waitFor(() => b.errors.some((e) => e.code === "not_host"));
+    a.send({ t: "restart" });
+    await a.waitFor(() => a.room?.phase === "lobby");
+    expect(a.room!.players).toHaveLength(2);
+    expect(a.room!.ruleset.durationSeconds).toBe(120);
+    expect(a.room!.ruleset.scoreLimit).toBe(3);
+    expect(a.room!.players.every((p) => !p.ready)).toBe(true);
+    a.close();
+    b.close();
   });
 });

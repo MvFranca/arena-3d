@@ -155,7 +155,10 @@ export class GameServer {
         break;
       }
       case "team":
-        if (msg.team === "left" || msg.team === "right") session.room?.setTeam(session.playerId, msg.team);
+        if (msg.team === "left" || msg.team === "right") this.assign(session, session.playerId, msg.team);
+        break;
+      case "assign":
+        if (msg.team === "left" || msg.team === "right" || msg.team === "spec") this.assign(session, msg.playerId, msg.team);
         break;
       case "ready":
         session.room?.setReady(session.playerId, !!msg.ready);
@@ -165,8 +168,28 @@ export class GameServer {
         if (reason) session.send({ t: "error", code: reason, message: errorText(reason) });
         break;
       }
+      case "pause": {
+        const reason = session.room?.setPaused(session.playerId, !!msg.paused);
+        if (reason) session.send({ t: "error", code: reason, message: errorText(reason) });
+        break;
+      }
+      case "set_limits": {
+        const reason = session.room?.setLimits(session.playerId, msg.durationSeconds, msg.scoreLimit);
+        if (reason) session.send({ t: "error", code: reason, message: errorText(reason) });
+        break;
+      }
       case "set_map": {
         void this.handleSetMap(session, msg.mapId);
+        break;
+      }
+      case "set_arena": {
+        const reason = session.room?.setArena(session.playerId, msg.arena);
+        if (reason) session.send({ t: "error", code: reason, message: errorText(reason) });
+        break;
+      }
+      case "restart": {
+        const reason = session.room?.restart(session.playerId);
+        if (reason) session.send({ t: "error", code: reason, message: errorText(reason) });
         break;
       }
       case "leave":
@@ -185,6 +208,11 @@ export class GameServer {
     } catch (err) {
       session.send({ t: "error", code: String((err as Error).message), message: errorText((err as Error).message) });
     }
+  }
+
+  private assign(session: Session, playerId: string, team: "left" | "right" | "spec"): void {
+    const reason = session.room?.assign(session.playerId, playerId, team);
+    if (reason) session.send({ t: "error", code: reason, message: errorText(reason) });
   }
 
   private async handleSetMap(session: Session, mapId: string): Promise<void> {
@@ -249,8 +277,15 @@ function errorText(code: string): string {
     not_host: "Só o host pode fazer isso.",
     already_started: "A partida já começou.",
     need_two_players: "Precisa de pelo menos 2 jogadores.",
-    not_everyone_ready: "Todos precisam estar prontos.",
+    not_everyone_ready: "Todos em campo precisam estar prontos.",
+    need_both_teams: "Precisa de pelo menos um jogador em cada time.",
     automatic_room: "Esta sala começa sozinha.",
+    team_full: "Esse time já está cheio.",
+    pause_first: "Pause a partida para trocar o mapa.",
+    not_playing: "A partida não está em andamento.",
+    bad_limits: "Tempo ou limite de gols inválido.",
+    bad_team: "Time inválido.",
+    not_found: "Jogador não está na sala.",
     unknown_map: "Mapa não encontrado.",
     custom_map_ranked: "Partida ranqueada só usa mapas oficiais.",
   };

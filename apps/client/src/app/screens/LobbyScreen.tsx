@@ -1,10 +1,10 @@
-import { getAbility, hasAbility } from "@arena/sim";
 import { useEffect, useState } from "react";
 import { connection } from "../../net/GameConnection";
 import { CameraSettings } from "../../ui/CameraSettings";
 import { Card, ErrorBanner, Logo, Shell } from "../../ui/common";
 import { blurFieldOnEscape, isFormField } from "../../ui/keys";
-import { MapSelect } from "../../ui/MapSelect";
+import { RoomBoard } from "../../ui/RoomBoard";
+import { roomLink, setSalaParam } from "../roomLink";
 import { navigate, setState, useAppState } from "../store";
 
 export function LobbyScreen() {
@@ -39,9 +39,10 @@ export function LobbyScreen() {
       if (!player || room.automatic || room.phase !== "lobby") return;
       e.preventDefault();
       if (player.isHost) {
-        const ready = room.players.length >= 2 && room.players.every((p) => p.ready || p.isHost);
+        const field = room.players.filter((p) => p.team !== "spec");
+        const ready = field.some((p) => p.team === "left") && field.some((p) => p.team === "right") && field.every((p) => p.ready || p.isHost);
         if (ready) connection.sendJson({ t: "start" });
-      } else {
+      } else if (player.team !== "spec") {
         connection.sendJson({ t: "ready", ready: !player.ready });
       }
     };
@@ -50,15 +51,9 @@ export function LobbyScreen() {
   });
 
   if (!room) return null;
-  const me = room.players.find((p) => p.slot === mySlot);
-  const arena = room.arena;
-  const left = room.players.filter((p) => p.team === "left");
-  const right = room.players.filter((p) => p.team === "right");
-  const everyoneReady = room.players.length >= 2 && room.players.every((p) => p.ready || p.isHost);
-  const teamSize = room.ruleset.teamSize;
 
   const copy = () => {
-    void navigator.clipboard?.writeText(room.code);
+    void navigator.clipboard?.writeText(roomLink(room.code));
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -66,6 +61,7 @@ export function LobbyScreen() {
   const leave = () => {
     connection.leaveRoom();
     connection.disconnect();
+    setSalaParam(null);
     navigate("home");
   };
 
@@ -82,50 +78,18 @@ export function LobbyScreen() {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="text-xs uppercase tracking-widest text-white/40">Código da sala</div>
-            <button className="font-display mt-1 flex items-center gap-3 text-4xl font-bold tracking-[0.25em]" onClick={copy} title="Copiar">
+            <button className="font-display mt-1 flex items-center gap-3 text-4xl font-bold tracking-[0.25em]" onClick={copy} title="Copiar o link da sala">
               {room.code}
-              <span className="text-sm font-normal tracking-normal text-white/40">{copied ? "copiado!" : "copiar"}</span>
+              <span className="text-sm font-normal tracking-normal text-white/40">{copied ? "link copiado!" : "copiar link"}</span>
             </button>
+            <div className="mt-1 max-w-md truncate text-xs text-white/40">{roomLink(room.code)}</div>
           </div>
           <div className="text-right text-sm text-white/60">
-            <div className="font-semibold text-white">{arena.name}</div>
-            <div>
-              {teamSize}v{teamSize} · {room.ruleset.durationSeconds / 60} min
-            </div>
+            <div className="font-semibold text-white">{room.arena.name}</div>
             {room.automatic && <div className="text-[#ffb3ec]">partida automática</div>}
           </div>
         </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <TeamColumn title="Vermelho" color={arena.theme.left} players={left} capacity={teamSize} mySlot={mySlot} onJoin={() => connection.sendJson({ t: "team", team: "left" })} />
-          <TeamColumn title="Azul" color={arena.theme.right} players={right} capacity={teamSize} mySlot={mySlot} onJoin={() => connection.sendJson({ t: "team", team: "right" })} />
-        </div>
-        {me?.isHost && !room.automatic && room.phase === "lobby" && (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-xs uppercase tracking-widest text-white/40">Mapa</span>
-            <MapSelect value={room.mapId} onChange={(id) => connection.sendJson({ t: "set_map", mapId: id })} apiOnline={apiOnline} />
-            <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => navigate("maps")}>
-              Criar mapa
-            </button>
-          </div>
-        )}
-
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-white/50">{room.players.length} / {room.ruleset.maxPlayers} jogadores · precisa de pelo menos 2</div>
-          <div className="flex gap-2">
-            {me && !me.isHost && !room.automatic && (
-              <button className={`btn ${me.ready ? "btn-secondary" : "btn-primary"}`} onClick={() => connection.sendJson({ t: "ready", ready: !me.ready })}>
-                {me.ready ? "Pronto ✓" : "Estou pronto"}
-              </button>
-            )}
-            {me?.isHost && !room.automatic && (
-              <button className="btn btn-primary" disabled={!everyoneReady} onClick={() => connection.sendJson({ t: "start" })} title={everyoneReady ? "" : "Todos precisam estar prontos"}>
-                Começar partida
-              </button>
-            )}
-            {room.automatic && <span className="text-sm text-white/60">A partida começa quando a sala encher.</span>}
-          </div>
-        </div>
+        <RoomBoard room={room} mySlot={mySlot} apiOnline={apiOnline} mode="lobby" onLeave={leave} />
       </Card>
       <Card className="mt-4">
         <div className="mb-2 flex items-center justify-between">
@@ -135,46 +99,5 @@ export function LobbyScreen() {
         <CameraSettings compact />
       </Card>
     </Shell>
-  );
-}
-
-function TeamColumn(props: { title: string; color: string; players: { slot: number; name: string; ready: boolean; isHost: boolean; connected: boolean; abilityId: string | null; archetypeId?: string }[]; capacity: number; mySlot: number | null; onJoin: () => void; }) {
-  const slots = Array.from({ length: props.capacity }, (_, i) => props.players[i] ?? null);
-  const iAmHere = props.players.some((p) => p.slot === props.mySlot);
-  return (
-    <div className="rounded-2xl border p-4" style={{ borderColor: `${props.color}55`, background: `${props.color}0f` }}>
-      <div className="mb-3 flex items-center justify-between">
-        <div className="font-display flex items-center gap-2 text-lg font-bold">
-          <span className="h-3 w-3 rounded-full" style={{ background: props.color, boxShadow: `0 0 10px ${props.color}` }} />
-          {props.title}
-        </div>
-        {!iAmHere && props.players.length < props.capacity && (
-          <button className="btn btn-ghost px-3 py-1 text-xs" onClick={props.onJoin}>
-            entrar neste time
-          </button>
-        )}
-      </div>
-      <ul className="space-y-2">
-        {slots.map((p, i) => (
-          <li key={i} className={`flex items-center justify-between rounded-xl px-3 py-2 ${p ? "bg-black/30" : "border border-dashed border-white/10 text-white/25"}`}>
-            {p ? (
-              <>
-                <span className="flex items-center gap-2">
-                  <span className={`font-semibold ${p.slot === props.mySlot ? "text-white" : "text-white/80"}`}>{p.name}</span>
-                  {p.isHost && <span className="rounded bg-white/10 px-1.5 text-[10px] uppercase tracking-wider text-white/60">host</span>}
-                  {!p.connected && <span className="text-xs text-red-300">desconectado</span>}
-                </span>
-                <span className="flex items-center gap-2 text-xs text-white/50">
-                  {p.abilityId && hasAbility(p.abilityId) && <span>{getAbility(p.abilityId).name}</span>}
-                  {p.ready || p.isHost ? <span className="text-emerald-300">pronto</span> : <span>aguardando</span>}
-                </span>
-              </>
-            ) : (
-              <span className="text-sm">vaga livre</span>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }

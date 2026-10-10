@@ -19,8 +19,17 @@ export const RULESETS: Record<string, Ruleset> = {
   practice: { ...base, id: "practice", maxPlayers: 8, teamSize: 4, durationSeconds: 180 },
 };
 
+/** Vagas extras de espectador em sala custom (o tamanho de cada time nao muda). */
+export const CUSTOM_ROOM_CAPACITY = 16;
+
 export function getRuleset(id: string): Ruleset {
   const r = RULESETS[id];
   if (!r) throw new Error(`Ruleset desconhecido: ${id}`);
   return r;
+}
+
+/** Copia o modo. A sala pode mudar tempo, gols e vagas sem alterar o catalogo global. */
+export function cloneRuleset(id: string, maxPlayers?: number): Ruleset {
+  const r = getRuleset(id);
+  return { ...r, maxPlayers: maxPlayers ?? r.maxPlayers };
 }

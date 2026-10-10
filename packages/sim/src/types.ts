@@ -147,6 +147,8 @@ export interface MatchState {
   phase: MatchPhase;
   phaseTicksRemaining: number;
   clockTicksRemaining: number;
+  /** Relogio e fisica parados; o tick da rede continua. */
+  paused: boolean;
   scoreLeft: number;
   scoreRight: number;
   ball: BallState;
@@ -174,6 +176,7 @@ export function createEmptyMatchState(): MatchState {
     phase: "lobby",
     phaseTicksRemaining: 0,
     clockTicksRemaining: 0,
+    paused: false,
     scoreLeft: 0,
     scoreRight: 0,
     ball: createEmptyBallState(),

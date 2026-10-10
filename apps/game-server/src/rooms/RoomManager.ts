@@ -1,4 +1,4 @@
-import { getRuleset, RULESETS, type ArenaConfig } from "@arena/sim";
+import { cloneRuleset, CUSTOM_ROOM_CAPACITY, RULESETS, type ArenaConfig } from "@arena/sim";
 import { randomBytes } from "node:crypto";
 import { config } from "../config";
 import { resolveRoomMap } from "../platform";
@@ -34,8 +34,9 @@ export class RoomManager {
   ): Promise<MatchRoom> {
     if (this.rooms.size >= config.maxRooms) throw new Error("server_full");
     if (!RULESETS[rulesetId]) throw new Error("unknown_ruleset");
-    const ruleset = getRuleset(rulesetId);
     const ranked = opts.ranked ?? false;
+    const automatic = opts.automatic ?? false;
+    const ruleset = cloneRuleset(rulesetId, !automatic && !ranked ? CUSTOM_ROOM_CAPACITY : undefined);
     const resolved = opts.arena
       ? { mapId: opts.mapId ?? opts.arena.id, arena: opts.arena }
       : await resolveRoomMap(ranked ? ruleset.arenaId : opts.mapId, ranked, ruleset.arenaId);
@@ -45,7 +46,7 @@ export class RoomManager {
       ruleset,
       arena: resolved.arena,
       mapId: resolved.mapId,
-      automatic: opts.automatic ?? false,
+      automatic,
       reserved: opts.reserved,
       ticket: opts.ticket,
       ranked,

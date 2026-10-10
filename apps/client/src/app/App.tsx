@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { setSalaParam } from "./roomLink";
 import { HomeScreen } from "./screens/HomeScreen";
 import { LobbyScreen } from "./screens/LobbyScreen";
 import { MapEditorScreen } from "./screens/MapEditorScreen";
@@ -9,6 +11,10 @@ import { useAppState } from "./store";
 
 export function App() {
   const screen = useAppState((s) => s.screen);
+  const code = useAppState((s) => s.room?.code ?? null);
+  useEffect(() => {
+    if (code) setSalaParam(code);
+  }, [code]);
   switch (screen) {
     case "match":
       return <MatchScreen />;

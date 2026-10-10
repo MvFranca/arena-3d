@@ -1,11 +1,14 @@
 import type { AbilityId, ArenaConfig, Attributes, Loadout, MatchEvent, Ruleset, Team } from "@arena/sim";
 
+/** Time em campo ou fora da partida. A fisica so conhece left/right. */
+export type RosterTeam = Team | "spec";
+
 /** Jogador como aparece no roster da sala. O loadout aqui e o que o servidor congelou. */
 export interface RosterPlayer {
   id: string;
   slot: number;
   name: string;
-  team: Team;
+  team: RosterTeam;
   connected: boolean;
   ready: boolean;
   isHost: boolean;
@@ -28,6 +31,8 @@ export interface RoomInfo {
   players: RosterPlayer[];
   /** Partida ranqueada/matchmaking: ninguem controla o start, o servidor inicia sozinho. */
   automatic: boolean;
+  /** Host pausou: bola, jogadores e relogio parados. */
+  paused: boolean;
 }
 
 // ------------------------------------------------------------- cliente -> servidor
@@ -47,9 +52,14 @@ export type ClientMessage =
   | { t: "create"; rulesetId: string; mapId?: string }
   | { t: "join"; code: string; ticket?: string }
   | { t: "team"; team: Team }
+  | { t: "assign"; playerId: string; team: RosterTeam }
   | { t: "ready"; ready: boolean }
   | { t: "start" }
+  | { t: "pause"; paused: boolean }
+  | { t: "set_limits"; durationSeconds: number; scoreLimit: number }
   | { t: "set_map"; mapId: string }
+  | { t: "set_arena"; arena: ArenaConfig }
+  | { t: "restart" }
   | { t: "leave" };
 
 // ------------------------------------------------------------- servidor -> cliente

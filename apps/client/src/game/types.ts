@@ -78,5 +78,8 @@ export interface SimulationHost {
   readonly localPlayerIds: string[];
   readonly pingMs: number;
   readonly netDebug?: NetDebug;
+  /** False enquanto o menu da partida está aberto ou o jogador é espectador. */
+  setInputEnabled(enabled: boolean): void;
+  setPaused(paused: boolean): void;
   dispose(): void;
 }

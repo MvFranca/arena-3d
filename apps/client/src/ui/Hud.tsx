@@ -15,6 +15,8 @@ export function Hud(props: {
   rightName?: string;
   onLeave?: () => void;
   showPing: boolean;
+  paused?: boolean;
+  unlimitedTime?: boolean;
   /** True quando ha dois jogadores no mesmo teclado: a camera fica em arena. */
   cameraLocked?: boolean;
   onToggleCameraPanel?: () => void;
@@ -53,9 +55,10 @@ export function Hud(props: {
           <TeamBadge color={props.rightColor} name={props.rightName ?? "Azul"} align="left" compact={touch} />
         </div>
         <div className="mt-2 text-center">
-          <span className={`font-display inline-block rounded-full px-3 py-0.5 text-sm font-semibold tabular-nums ${hud.clockTicks < 30 * TICK_RATE && hud.phase === "playing" ? "bg-[#ff4fd8]/30 text-[#ffb3ec]" : "bg-black/40 text-white/80"}`}>
-            {formatClock(hud.clockTicks)}
+          <span className={`font-display inline-block rounded-full px-3 py-0.5 text-sm font-semibold tabular-nums ${!props.unlimitedTime && hud.clockTicks < 30 * TICK_RATE && hud.phase === "playing" ? "bg-[#ff4fd8]/30 text-[#ffb3ec]" : "bg-black/40 text-white/80"}`}>
+            {props.unlimitedTime ? "∞" : formatClock(hud.clockTicks)}
           </span>
+          {props.paused && <div className="mt-1 text-xs font-semibold uppercase tracking-widest text-amber-200">pausado · Esc</div>}
         </div>
       </div>
 
@@ -103,7 +106,7 @@ export function Hud(props: {
           <b className="text-white/60">WASD</b> mover · <b className="text-white/60">Espaço</b> chutar · <b className="text-white/60">Shift</b> habilidade
         </div>
         <div className="mt-1">
-          <b className="text-white/60">C</b> trocar câmera · <b className="text-white/60">V</b> ajustes
+          <b className="text-white/60">C</b> trocar câmera · <b className="text-white/60">V</b> ajustes · <b className="text-white/60">Esc</b> sala
         </div>
       </div>
       <div className={`absolute left-2 top-2 flex text-xs md:left-5 md:top-5 ${compactHud ? "flex-col items-start gap-1" : "items-center gap-2"}`}>

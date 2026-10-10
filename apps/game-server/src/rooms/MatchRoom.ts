@@ -1,9 +1,10 @@
-import { BufferWriter, encodeSnapshot, type RoomInfo, type RosterPlayer, type TimedInput } from "@arena/protocol";
+import { BufferWriter, encodeSnapshot, type RoomInfo, type RosterPlayer, type RosterTeam, type TimedInput } from "@arena/protocol";
 import {
   EMPTY_INPUT,
   MatchSimulation,
   SNAPSHOT_EVERY_TICKS,
   createEmptyMatchState,
+  sanitizeArena,
   type ArenaConfig,
   type MatchEvent,
   type MatchState,
@@ -26,7 +27,7 @@ const FUTURE_LIMIT_TICKS = 45;
 interface Slot {
   session: Session;
   slot: number;
-  team: Team;
+  team: RosterTeam;
   ready: boolean;
   connected: boolean;
   disconnectedAt: number | null;
@@ -47,7 +48,7 @@ export interface MatchResultReport {
   scoreRight: number;
   winner: Team | "draw";
   ranked: boolean;
-  players: { id: string; name: string; guest: boolean; team: Team; goals: number; ownGoals: number }[];
+  players: { id: string; name: string; guest: boolean; team: RosterTeam; goals: number; ownGoals: number }[];
 }
 
 export interface MatchRoomOptions {
@@ -156,7 +157,7 @@ export class MatchRoom {
     };
     this.slots.set(session.playerId, slot);
     session.room = this;
-    this.sim.addPlayer({ id: session.playerId, slot: slotIndex, team, name: session.name, loadout: session.loadout });
+    this.spawnSlot(slot);
     if (!this.hostId) this.hostId = session.playerId;
     log.info({ room: this.code, player: session.playerId, team }, "player joined");
     this.broadcastRoom();
@@ -205,18 +206,25 @@ export class MatchRoom {
     this.broadcastRoom();
   }
 
-  setTeam(playerId: string, team: Team): void {
+  assign(actorId: string, playerId: string, team: RosterTeam): string | null {
+    if (this.automatic || this.ranked) return "automatic_room";
+    if (this.sim.phase === "finished") return "already_started";
+    if (team !== "left" && team !== "right" && team !== "spec") return "bad_team";
+    const actor = this.slots.get(actorId);
     const slot = this.slots.get(playerId);
-    if (!slot || slot.team === team) return;
-    if (this.sim.phase !== "lobby") return;
-    let count = 0;
-    for (const s of this.slots.values()) if (s.team === team) count++;
-    if (count >= this.ruleset.teamSize) return;
+    if (!actor || !slot) return "not_found";
+    if (actorId !== this.hostId && actorId !== playerId) return "not_host";
+    if (slot.team === team) return null;
+    if (team !== "spec") {
+      let count = 0;
+      for (const s of this.slots.values()) if (s.team === team) count++;
+      if (count >= this.ruleset.teamSize) return "team_full";
+    }
     slot.team = team;
-    // Recria o corpo no time novo (posicao de spawn e cor).
     this.sim.removePlayer(playerId);
-    this.sim.addPlayer({ id: playerId, slot: slot.slot, team, name: slot.session.name, loadout: slot.session.loadout });
+    this.spawnSlot(slot);
     this.broadcastRoom();
+    return null;
   }
 
   setReady(playerId: string, ready: boolean): void {
@@ -226,33 +234,103 @@ export class MatchRoom {
     this.broadcastRoom();
   }
 
-  setMap(playerId: string, mapId: string, arena: ArenaConfig): string | null {
+  restart(playerId: string): string | null {
     if (this.automatic || this.ranked) return "automatic_room";
     if (playerId !== this.hostId) return "not_host";
-    if (this.sim.phase !== "lobby") return "already_started";
+    if (this.sim.phase === "lobby") return null;
+    this.finishedAt = null;
+    this.resetToLobby();
+    return null;
+  }
+
+  setPaused(playerId: string, paused: boolean): string | null {
+    if (this.automatic || this.ranked) return "automatic_room";
+    if (playerId !== this.hostId) return "not_host";
+    if (this.sim.phase === "lobby" || this.sim.phase === "finished") return "not_playing";
+    this.sim.setPaused(paused);
+    this.broadcastRoom();
+    return null;
+  }
+
+  setLimits(playerId: string, durationSeconds: number, scoreLimit: number): string | null {
+    if (this.automatic || this.ranked) return "automatic_room";
+    if (playerId !== this.hostId) return "not_host";
+    if (this.sim.phase === "finished") return "already_started";
+    if (typeof durationSeconds !== "number" || typeof scoreLimit !== "number" || !Number.isFinite(durationSeconds) || !Number.isFinite(scoreLimit)) {
+      return "bad_limits";
+    }
+    const duration = Math.round(durationSeconds);
+    const score = Math.round(scoreLimit);
+    if (duration < 0 || duration > 30 * 60 || score < 0 || score > 20) return "bad_limits";
+    this.sim.setLimits(duration, score);
+    this.broadcastRoom();
+    return null;
+  }
+
+  setMap(playerId: string, mapId: string, arena: ArenaConfig): string | null {
+    const reason = this.canEditArena(playerId);
+    if (reason) return reason;
     this.applyArena(mapId, arena);
     this.broadcastRoom();
     return null;
   }
 
+  setArena(playerId: string, arena: ArenaConfig): string | null {
+    const reason = this.canEditArena(playerId);
+    if (reason) return reason;
+    const clean = sanitizeArena(arena);
+    this.applyArena(clean.id || "custom", clean);
+    this.broadcastRoom();
+    return null;
+  }
+
+  private canEditArena(playerId: string): string | null {
+    if (this.automatic || this.ranked) return "automatic_room";
+    if (playerId !== this.hostId) return "not_host";
+    if (this.sim.phase === "finished") return "already_started";
+    if (this.sim.phase !== "lobby" && !this.sim.paused) return "pause_first";
+    return null;
+  }
+
   private applyArena(mapId: string, arena: ArenaConfig): void {
+    const progress = this.sim.phase === "lobby" ? null : this.sim.captureProgress();
     this.mapId = mapId;
     this.arena = arena;
     const old = this.sim;
     this.sim = this.spawnSim();
-    for (const s of this.slots.values()) {
-      this.sim.addPlayer({ id: s.session.playerId, slot: s.slot, team: s.team, name: s.session.name, loadout: s.session.loadout });
-      this.sim.setConnected(s.session.playerId, s.connected);
+    for (const s of this.slots.values()) this.spawnSlot(s);
+    if (progress && progress.phase !== "finished") {
+      this.sim.restoreProgress(progress);
+      this.sim.resetPositions();
     }
     old.dispose();
+  }
+
+  private spawnSlot(slot: Slot): void {
+    if (slot.team === "spec") return;
+    this.sim.addPlayer({
+      id: slot.session.playerId,
+      slot: slot.slot,
+      team: slot.team,
+      name: slot.session.name,
+      loadout: slot.session.loadout,
+    });
+    this.sim.setConnected(slot.session.playerId, slot.connected);
   }
 
   requestStart(playerId: string): string | null {
     if (this.automatic) return "automatic_room";
     if (playerId !== this.hostId) return "not_host";
     if (this.sim.phase !== "lobby") return "already_started";
-    if (this.slots.size < 2) return "need_two_players";
-    for (const s of this.slots.values()) if (!s.ready && s.session.playerId !== this.hostId) return "not_everyone_ready";
+    let left = 0;
+    let right = 0;
+    for (const s of this.slots.values()) {
+      if (s.team === "spec") continue;
+      if (s.team === "left") left++;
+      else right++;
+      if (!s.ready && s.session.playerId !== this.hostId) return "not_everyone_ready";
+    }
+    if (left < 1 || right < 1) return "need_both_teams";
     this.start();
     return null;
   }
@@ -377,8 +455,7 @@ export class MatchRoom {
       s.ready = false;
       s.inputs.clear();
       s.lastInputTick = -1;
-      this.sim.addPlayer({ id: s.session.playerId, slot: s.slot, team: s.team, name: s.session.name, loadout: s.session.loadout });
-      this.sim.setConnected(s.session.playerId, s.connected);
+      this.spawnSlot(s);
     }
     old.dispose();
     this.automatic = false; // revanche fica na mao do host
@@ -422,7 +499,7 @@ export class MatchRoom {
         archetypeId: s.session.loadout.archetypeId,
         skinId: s.session.loadout.skinId,
       }));
-    return { code: this.code, ruleset: this.ruleset, arena: this.arena, mapId: this.mapId, phase: this.sim.phase, players, automatic: this.automatic };
+    return { code: this.code, ruleset: this.ruleset, arena: this.arena, mapId: this.mapId, phase: this.sim.phase, players, automatic: this.automatic, paused: this.sim.paused };
   }
 
   broadcastRoom(): void {
@@ -438,13 +515,16 @@ export class MatchRoom {
     throw new Error("sem vaga");
   }
 
-  private pickTeam(): Team {
+  private pickTeam(): RosterTeam {
     let left = 0;
     let right = 0;
-    for (const s of this.slots.values()) s.team === "left" ? left++ : right++;
+    for (const s of this.slots.values()) {
+      if (s.team === "left") left++;
+      else if (s.team === "right") right++;
+    }
     if (left < this.ruleset.teamSize && left <= right) return "left";
     if (right < this.ruleset.teamSize) return "right";
-    return "left";
+    return "spec";
   }
 
   destroy(): void {

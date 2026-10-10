@@ -39,6 +39,7 @@ export class MatchSimulation {
   phase: MatchPhase = "lobby";
   phaseTicksRemaining = 0;
   clockTicksRemaining: number;
+  paused = false;
   scoreLeft = 0;
   scoreRight = 0;
 
@@ -118,8 +119,68 @@ export class MatchSimulation {
   /** Lobby -> countdown. Reposiciona todo mundo. */
   start(): void {
     if (this.phase !== "lobby") return;
+    this.paused = false;
     this.resetPositions();
     this.enterPhase("countdown", secondsToTicks(this.ruleset.countdownSeconds));
+  }
+
+  setPaused(paused: boolean): void {
+    if (this.paused === paused) return;
+    this.paused = paused;
+    if (!paused) return;
+    for (const p of this.players.values()) freezePlayer(p);
+    this.ball.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+  }
+
+  /**
+   * Tempo em segundos (0 = sem limite, ate 30 min) e gols (0 = sem limite).
+   * No lobby o relogio vira a duracao nova. No meio da partida, o restante
+   * acompanha o que ja passou.
+   */
+  setLimits(durationSeconds: number, scoreLimit: number): void {
+    const prev = this.ruleset.durationSeconds;
+    this.ruleset.durationSeconds = durationSeconds;
+    this.ruleset.scoreLimit = scoreLimit;
+    if (!this.started || this.phase === "lobby") {
+      this.clockTicksRemaining = secondsToTicks(durationSeconds);
+      return;
+    }
+    if (durationSeconds <= 0) return;
+    if (prev <= 0) this.clockTicksRemaining = secondsToTicks(durationSeconds);
+    else {
+      const elapsed = Math.max(0, secondsToTicks(prev) - this.clockTicksRemaining);
+      this.clockTicksRemaining = Math.max(0, secondsToTicks(durationSeconds) - elapsed);
+    }
+  }
+
+  captureProgress(): {
+    phase: MatchPhase;
+    phaseTicksRemaining: number;
+    clockTicksRemaining: number;
+    scoreLeft: number;
+    scoreRight: number;
+    paused: boolean;
+    started: boolean;
+  } {
+    return {
+      phase: this.phase,
+      phaseTicksRemaining: this.phaseTicksRemaining,
+      clockTicksRemaining: this.clockTicksRemaining,
+      scoreLeft: this.scoreLeft,
+      scoreRight: this.scoreRight,
+      paused: this.paused,
+      started: this.started,
+    };
+  }
+
+  restoreProgress(p: ReturnType<MatchSimulation["captureProgress"]>): void {
+    this.phase = p.phase;
+    this.phaseTicksRemaining = p.phaseTicksRemaining;
+    this.clockTicksRemaining = p.clockTicksRemaining;
+    this.scoreLeft = p.scoreLeft;
+    this.scoreRight = p.scoreRight;
+    this.paused = p.paused;
+    this.started = p.started;
   }
 
   // ---------------------------------------------------------------- loop
@@ -127,9 +188,9 @@ export class MatchSimulation {
   /** Avanca um tick fixo. Os eventos devolvidos sao validos ate o proximo step. */
   step(): MatchEvent[] {
     this.events.length = 0;
-    this.advancePhase();
+    if (!this.paused) this.advancePhase();
 
-    const frozen = this.phase === "countdown" || this.phase === "finished";
+    const frozen = this.paused || this.phase === "countdown" || this.phase === "finished";
     const ballBody = this.ball.body;
     const pbv = ballBody.linvel();
     this.prevBallVel.x = pbv.x;
@@ -188,6 +249,11 @@ export class MatchSimulation {
         }
         break;
       case "playing":
+        if (this.scoreLimitReached()) {
+          this.finish();
+          break;
+        }
+        if (this.ruleset.durationSeconds <= 0) break;
         if (--this.clockTicksRemaining <= 0) {
           this.clockTicksRemaining = 0;
           this.finish();
@@ -195,7 +261,8 @@ export class MatchSimulation {
         break;
       case "goal":
         if (--this.phaseTicksRemaining <= 0) {
-          if (this.clockTicksRemaining <= 0 || this.scoreLimitReached()) {
+          const timeUp = this.ruleset.durationSeconds > 0 && this.clockTicksRemaining <= 0;
+          if (timeUp || this.scoreLimitReached()) {
             this.finish();
           } else {
             this.resetPositions();
@@ -350,6 +417,7 @@ export class MatchSimulation {
     out.phase = this.phase;
     out.phaseTicksRemaining = this.phaseTicksRemaining;
     out.clockTicksRemaining = this.clockTicksRemaining;
+    out.paused = this.paused;
     out.scoreLeft = this.scoreLeft;
     out.scoreRight = this.scoreRight;
     const bt = this.ball.body.translation();
@@ -414,6 +482,7 @@ export class MatchSimulation {
     this.phase = state.phase;
     this.phaseTicksRemaining = state.phaseTicksRemaining;
     this.clockTicksRemaining = state.clockTicksRemaining;
+    this.paused = !!state.paused;
     this.scoreLeft = state.scoreLeft;
     this.scoreRight = state.scoreRight;
     if (state.phase !== "lobby") this.started = true;

@@ -184,7 +184,8 @@ export class GameView {
     // Camera: preferencias lidas a cada frame, entao sliders e tecla C valem na hora.
     const prefs = getState().camera;
     const twoLocal = this.host.localPlayerIds.length > 1;
-    const effective: CameraMode = prefs.mode === "thirdPerson" && !twoLocal ? "thirdPerson" : "arena";
+    const onField = s.players.some((p) => p.isLocal);
+    const effective: CameraMode = prefs.mode === "thirdPerson" && !twoLocal && onField ? "thirdPerson" : "arena";
     cameraState.forcedArena = prefs.mode === "thirdPerson" && twoLocal;
     const focusPlayer = s.players.find((p) => p.id === s.focusPlayerId) ?? null;
     let focus: CameraFocus | null = null;

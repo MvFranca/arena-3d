@@ -7,12 +7,14 @@ import { ErrorBanner, Logo } from "../../ui/common";
 import { blurFieldOnEscape, consumesArrows, isFormField } from "../../ui/keys";
 import { MapSelect } from "../../ui/MapSelect";
 import { HubScene } from "../../ui/HubScene";
+import { readSalaParam } from "../roomLink";
 import { getState, navigate, setState, showError, useAppState } from "../store";
 
 type ModeId = "treino" | "ranked" | "sala" | "perfil";
 const MODES: ModeId[] = ["treino", "ranked", "sala", "perfil"];
 
 const ABILITY_LABEL: Record<string, string> = { dash: "Impulso", power_shot: "Carga", shield: "Escudo" };
+let salaInviteStarted = false;
 
 export function HomeScreen() {
   const name = useAppState((s) => s.name);
@@ -34,6 +36,17 @@ export function HomeScreen() {
 
   useEffect(() => {
     void ensureSession(getState().name);
+  }, []);
+
+  useEffect(() => {
+    const code = readSalaParam();
+    if (!code || salaInviteStarted) return;
+    salaInviteStarted = true;
+    setCode(code);
+    setOpen("sala");
+    if (getState().name.trim().length >= 2) void connectAndJoin("join", { code });
+    // O convite da URL entra uma vez, na abertura.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -90,7 +103,7 @@ export function HomeScreen() {
       await ensureSession(n);
       const s = getState();
       const ok = await connection.connect(defaultGameServerUrl(), { token: s.token ?? undefined, name: n, loadout: s.loadout });
-      if (!ok) throw new Error("Não foi possível conectar ao servidor de jogo.");
+      if (!ok) throw new Error(connection.handshakeError ?? "Não foi possível conectar ao servidor de jogo.");
       const unsub = connection.on("error", (_c, m) => showError(m));
       if (action === "create") connection.sendJson({ t: "create", rulesetId: payload.rulesetId!, mapId: payload.mapId });
       else connection.sendJson({ t: "join", code: payload.code!.trim().toUpperCase() });

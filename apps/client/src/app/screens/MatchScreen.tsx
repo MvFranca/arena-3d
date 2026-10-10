@@ -10,8 +10,11 @@ import { GameView } from "../../render/GameView";
 import { CameraSettings } from "../../ui/CameraSettings";
 import { ArrowIcon } from "../../ui/icons";
 import { Hud } from "../../ui/Hud";
+import { RoomBoard } from "../../ui/RoomBoard";
 import { RotatePrompt } from "../../ui/RotatePrompt";
 import { TouchControls } from "../../ui/TouchControls";
+import { blurFieldOnEscape } from "../../ui/keys";
+import { setSalaParam } from "../roomLink";
 import { getState, initialHud, navigate, setHud, setState, toggleCameraMode, useAppState, type MatchResult } from "../store";
 
 export function MatchScreen() {
@@ -22,16 +25,62 @@ export function MatchScreen() {
   const connected = useAppState((s) => s.hud.connected);
   const localTwo = useAppState((s) => s.localTwoPlayers);
   const [cameraPanel, setCameraPanel] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const [localPaused, setLocalPaused] = useState(false);
   const cameraLocked = mode === "local" && localTwo;
+  const hostRef = useRef<SimulationHost | null>(null);
+  const goalsRef = useRef<MatchResult["goals"]>([]);
+  const menuRef = useRef(false);
+  const cameraRef = useRef(false);
+  menuRef.current = menu;
+  cameraRef.current = cameraPanel;
+  const mySlot = useAppState((s) => s.mySlot);
+  const apiOnline = useAppState((s) => s.apiOnline);
+  const me = room?.players.find((p) => p.slot === mySlot);
+  const spectating = mode === "online" && me?.team === "spec";
+  const arenaTheme = room?.arena.theme;
+  const arenaKey = mode === "online" && room && arenaTheme
+    ? [
+        room.mapId,
+        room.arena.name,
+        room.arena.halfLength,
+        room.arena.halfWidth,
+        room.arena.wallHeight,
+        room.arena.ceilingHeight,
+        room.arena.goalHalfWidth,
+        room.arena.goalHeight,
+        room.arena.goalDepth,
+        arenaTheme.floor,
+        arenaTheme.lines,
+        arenaTheme.walls,
+        arenaTheme.accent,
+        arenaTheme.sky,
+        arenaTheme.fog,
+        arenaTheme.left,
+        arenaTheme.right,
+      ].join("|")
+    : "local";
 
-  // Atalhos da camera: C alterna o modo, V abre o painel rapido. Fora dos inputs de texto.
+  useEffect(() => {
+    if (mode === "online" && room?.phase === "lobby") navigate("lobby");
+  }, [mode, room?.phase]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Escape") {
+        e.preventDefault();
+        if (blurFieldOnEscape(e.target)) return;
+        if (cameraRef.current) {
+          setCameraPanel(false);
+          return;
+        }
+        setMenu((v) => !v);
+        return;
+      }
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.repeat) return;
+      if (e.repeat || menuRef.current) return;
       if (e.code === "KeyC") toggleCameraMode();
       else if (e.code === "KeyV") setCameraPanel((v) => !v);
-      else if (e.code === "Escape") setCameraPanel(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -60,7 +109,7 @@ export function MatchScreen() {
       ]);
     }
 
-    const goals: MatchResult["goals"] = [];
+    const goals: MatchResult["goals"] = goalsRef.current;
     const myId = host.localPlayerIds[0] ?? null;
     let ended = false;
     let lastHudMs = 0;
@@ -120,6 +169,8 @@ export function MatchScreen() {
       });
     };
 
+    hostRef.current = host;
+    host.setInputEnabled(!menuRef.current && !(s.mode === "online" && connection.room?.players.find((p) => p.id === connection.playerId)?.team === "spec"));
     const view = new GameView(canvas, host, arena, { onEvent, onFrame, ballIndicator: indicatorRef.current });
     view.start();
     setHud({ ...initialHud });
@@ -129,16 +180,22 @@ export function MatchScreen() {
     return () => {
       if (navTimer !== null) clearTimeout(navTimer);
       unsubLeft();
+      hostRef.current = null;
       view.dispose();
       host.dispose();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [arenaKey]);
+
+  useEffect(() => {
+    hostRef.current?.setInputEnabled(!menu && !spectating);
+  }, [menu, spectating, arenaKey]);
 
   const leave = () => {
     if (getState().mode === "online") {
       connection.leaveRoom();
       connection.disconnect();
+      setSalaParam(null);
     }
     navigate("home");
   };
@@ -153,7 +210,16 @@ export function MatchScreen() {
           <ArrowIcon size={12} />
         </div>
       </div>
-      <Hud leftColor={theme.left} rightColor={theme.right} onLeave={leave} showPing={mode === "online"} cameraLocked={cameraLocked} onToggleCameraPanel={() => setCameraPanel((v) => !v)} />
+      <Hud
+        leftColor={theme.left}
+        rightColor={theme.right}
+        onLeave={leave}
+        showPing={mode === "online"}
+        cameraLocked={cameraLocked}
+        paused={mode === "online" ? !!room?.paused : localPaused}
+        unlimitedTime={mode === "online" && room?.ruleset.durationSeconds === 0}
+        onToggleCameraPanel={() => setCameraPanel((v) => !v)}
+      />
       <TouchControls />
       <RotatePrompt />
       {cameraPanel && (
@@ -165,6 +231,39 @@ export function MatchScreen() {
             </button>
           </div>
           <CameraSettings compact />
+        </div>
+      )}
+      {menu && mode === "online" && room && (
+        <div className="absolute inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/60 p-4 md:items-center" data-testid="match-menu">
+          <div className="w-full max-w-5xl">
+            <RoomBoard room={room} mySlot={mySlot} apiOnline={apiOnline} mode="match" onLeave={leave} />
+            <button className="btn btn-ghost mt-3 w-full" onClick={() => setMenu(false)}>
+              Voltar ao jogo
+            </button>
+          </div>
+        </div>
+      )}
+      {menu && mode === "local" && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 p-4" data-testid="match-menu">
+          <div className="glass w-full max-w-sm rounded-2xl p-5 text-center">
+            <h2 className="font-display text-xl font-bold">Partida</h2>
+            <p className="mt-1 text-sm text-white/50">Esc fecha este menu</p>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  const next = !localPaused;
+                  hostRef.current?.setPaused(next);
+                  setLocalPaused(next);
+                }}
+              >
+                {localPaused ? "Retomar" : "Pausar"}
+              </button>
+              <button className="btn btn-ghost" onClick={leave}>
+                Sair
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {mode === "online" && !connected && (

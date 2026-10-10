@@ -62,6 +62,7 @@ export interface Snapshot {
   tick: number;
   phase: MatchState["phase"];
   phaseTicksRemaining: number;
+  paused: boolean;
   clockTicksRemaining: number;
   scoreLeft: number;
   scoreRight: number;
@@ -73,6 +74,7 @@ export function encodeSnapshot(writer: BufferWriter, s: MatchState): Uint8Array 
   writer.reset().u8(OP.SNAPSHOT);
   writer.u32(s.tick);
   writer.u8(PHASE_CODES[s.phase]);
+  writer.u8(s.paused ? 1 : 0);
   writer.u16(Math.min(65535, s.phaseTicksRemaining));
   writer.u32(s.clockTicksRemaining);
   writer.u8(Math.min(255, s.scoreLeft));
@@ -100,6 +102,7 @@ export function encodeSnapshot(writer: BufferWriter, s: MatchState): Uint8Array 
 export function decodeSnapshot(reader: BufferReader): Snapshot {
   const tick = reader.u32();
   const phase = PHASE_FROM_CODE[reader.u8()] ?? "lobby";
+  const paused = reader.u8() !== 0;
   const phaseTicksRemaining = reader.u16();
   const clockTicksRemaining = reader.u32();
   const scoreLeft = reader.u8();
@@ -130,7 +133,7 @@ export function decodeSnapshot(reader: BufferReader): Snapshot {
       dirZ: reader.i8() / 127,
     });
   }
-  return { tick, phase, phaseTicksRemaining, clockTicksRemaining, scoreLeft, scoreRight, ball, players };
+  return { tick, phase, phaseTicksRemaining, paused, clockTicksRemaining, scoreLeft, scoreRight, ball, players };
 }
 
 // ------------------------------------------------------------------- ping/pong

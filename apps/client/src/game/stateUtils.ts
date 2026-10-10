@@ -6,6 +6,7 @@ export function copyMatchState(src: MatchState, dst: MatchState): void {
   dst.phase = src.phase;
   dst.phaseTicksRemaining = src.phaseTicksRemaining;
   dst.clockTicksRemaining = src.clockTicksRemaining;
+  dst.paused = src.paused;
   dst.scoreLeft = src.scoreLeft;
   dst.scoreRight = src.scoreRight;
   Object.assign(dst.ball, src.ball);

@@ -25,6 +25,7 @@ function snap(tick: number, players: SnapshotPlayer[], ballX = 0): Snapshot {
     tick,
     phase: "playing",
     phaseTicksRemaining: 0,
+    paused: false,
     clockTicksRemaining: 1000,
     scoreLeft: 0,
     scoreRight: 0,

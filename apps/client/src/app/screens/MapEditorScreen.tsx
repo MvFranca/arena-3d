@@ -24,12 +24,14 @@ export function MapEditorScreen() {
   const error = useAppState((s) => s.error);
   const room = useAppState((s) => s.room);
   const mySlot = useAppState((s) => s.mySlot);
-  const [draft, setDraft] = useState<ArenaConfig>(() => sanitizeArena({ ...ARENAS.classic, id: "custom", name: "Meu mapa" }));
+  const [draft, setDraft] = useState<ArenaConfig>(() => sanitizeArena(room?.arena ? { ...room.arena, id: room.arena.id || "custom" } : { ...ARENAS.classic, id: "custom", name: "Meu mapa" }));
   const [saving, setSaving] = useState(false);
+  const [applying, setApplying] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const preview = useMemo(() => sanitizeArena(draft), [draft]);
   const me = room?.players.find((p) => p.slot === mySlot);
-  const canUseInRoom = !!me?.isHost && room?.phase === "lobby" && !room.automatic;
+  const canUseInRoom = !!me?.isHost && !room?.automatic && (room?.phase === "lobby" || room?.phase === "finished" || !!room?.paused);
+  const backTo = room ? (room.phase === "lobby" || room.phase === "finished" ? "lobby" : "match") : "home";
 
   const setNum = (k: keyof ArenaConfig, v: number) => setDraft((d) => ({ ...d, [k]: v }));
 
@@ -53,7 +55,7 @@ export function MapEditorScreen() {
       if (e.key !== "Escape") return;
       e.preventDefault();
       if (blurFieldOnEscape(e.target)) return;
-      navigate(room ? "lobby" : "home");
+      navigate(room ? (room.phase === "lobby" || room.phase === "finished" ? "lobby" : "match") : "home");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -63,14 +65,53 @@ export function MapEditorScreen() {
     const id = savedId;
     if (!id || !canUseInRoom) return;
     connection.sendJson({ t: "set_map", mapId: id });
-    navigate("lobby");
+    navigate(backTo);
+  };
+
+  const applyToRoom = () => {
+    if (!canUseInRoom || applying) return;
+    if (!connection.isOpen) {
+      setState({ error: "A conexão com a sala caiu. Volte e entre de novo." });
+      return;
+    }
+    const clean = sanitizeArena({ ...draft, id: "custom" });
+    const stamp = arenaStamp(clean);
+    setApplying(true);
+    let settled = false;
+    const unsubRoom = connection.on("room", (next) => {
+      if (arenaStamp(next.arena) !== stamp) return;
+      settled = true;
+      unsubRoom();
+      unsubError();
+      window.clearTimeout(timer);
+      setApplying(false);
+      navigate(next.phase === "lobby" || next.phase === "finished" ? "lobby" : "match");
+    });
+    const unsubError = connection.on("error", (_code, message) => {
+      if (settled) return;
+      settled = true;
+      unsubRoom();
+      unsubError();
+      window.clearTimeout(timer);
+      setApplying(false);
+      setState({ error: message });
+    });
+    const timer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      unsubRoom();
+      unsubError();
+      setApplying(false);
+      setState({ error: "A sala não aplicou o mapa. O servidor de jogo desta sala ainda não aceita um estádio editado." });
+    }, 2500);
+    connection.sendJson({ t: "set_arena", arena: clean });
   };
 
   return (
     <Shell wide>
       <div className="mb-6 flex items-center justify-between">
         <Logo small />
-        <button className="btn btn-ghost" onClick={() => navigate(room ? "lobby" : "home")}>
+        <button className="btn btn-ghost" onClick={() => navigate(backTo)}>
           ← Voltar
         </button>
       </div>
@@ -101,9 +142,14 @@ export function MapEditorScreen() {
             ))}
           </div>
           <div className="mt-6 flex flex-wrap justify-end gap-2">
+            {canUseInRoom && (
+              <button className="btn btn-secondary" disabled={applying} onClick={applyToRoom}>
+                {applying ? "Aplicando…" : "Aplicar na sala"}
+              </button>
+            )}
             {savedId && canUseInRoom && (
               <button className="btn btn-secondary" onClick={useInRoom}>
-                Usar nesta sala
+                Usar mapa publicado
               </button>
             )}
             <button className="btn btn-primary" disabled={saving} onClick={() => void save()}>
@@ -122,6 +168,28 @@ export function MapEditorScreen() {
       </div>
     </Shell>
   );
+}
+
+function arenaStamp(arena: ArenaConfig): string {
+  const theme = arena.theme;
+  return [
+    arena.name,
+    arena.halfLength,
+    arena.halfWidth,
+    arena.wallHeight,
+    arena.ceilingHeight,
+    arena.goalHalfWidth,
+    arena.goalHeight,
+    arena.goalDepth,
+    theme.floor,
+    theme.lines,
+    theme.walls,
+    theme.accent,
+    theme.sky,
+    theme.fog,
+    theme.left,
+    theme.right,
+  ].join("|");
 }
 
 function Dim(props: { label: string; value: number; min: number; max: number; onChange: (v: number) => void }) {

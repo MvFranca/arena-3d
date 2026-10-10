@@ -38,6 +38,7 @@ describe("snapshot", () => {
     const d = decodeSnapshot(reader);
     expect(d.tick).toBe(1234);
     expect(d.phase).toBe("playing");
+    expect(d.paused).toBe(false);
     expect(d.scoreLeft).toBe(2);
     expect(d.ball.x).toBeCloseTo(3.46, 2);
     expect(d.ball.vx).toBeCloseTo(12.34, 2);

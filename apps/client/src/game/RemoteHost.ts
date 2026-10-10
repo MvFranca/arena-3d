@@ -54,6 +54,7 @@ export class RemoteHost implements SimulationHost {
   private prevPhase: MatchState["phase"] = "lobby";
   private readonly remoteInputs = new Map<string, { dirX: number; dirZ: number }>();
   private ticksSinceSnapshot = 0;
+  private inputEnabled = true;
 
   constructor(
     private readonly conn: GameConnection,
@@ -78,6 +79,15 @@ export class RemoteHost implements SimulationHost {
     return this.conn.clock.pingMs;
   }
 
+  setInputEnabled(enabled: boolean): void {
+    this.inputEnabled = enabled;
+    this.input.setEnabled(enabled);
+  }
+
+  setPaused(paused: boolean): void {
+    this.sim.setPaused(paused);
+  }
+
   get netDebug(): NetDebug {
     return {
       snapshotAgeMs: this.lastSnapshotAt ? performance.now() - this.lastSnapshotAt : 0,
@@ -92,10 +102,19 @@ export class RemoteHost implements SimulationHost {
   private syncRoster(room: RoomInfo): void {
     this.roster = room.players;
     this.slotToId.clear();
-    const ids = new Set<string>();
+    const live = new Set<string>();
+    this.sim.ruleset.durationSeconds = room.ruleset.durationSeconds;
+    this.sim.ruleset.scoreLimit = room.ruleset.scoreLimit;
+    this.sim.setPaused(!!room.paused);
     for (const p of room.players) {
       this.slotToId.set(p.slot, p.id);
-      ids.add(p.id);
+      if (p.team === "spec") {
+        if (this.sim.hasPlayer(p.id)) this.sim.removePlayer(p.id);
+        continue;
+      }
+      live.add(p.id);
+      const current = this.sim.getPlayerTeam(p.id);
+      if (current && current !== p.team) this.sim.removePlayer(p.id);
       if (!this.sim.hasPlayer(p.id)) {
         this.sim.addPlayer({
           id: p.id,
@@ -106,7 +125,7 @@ export class RemoteHost implements SimulationHost {
         });
       }
     }
-    for (const id of this.sim.getPlayerIds()) if (!ids.has(id)) this.sim.removePlayer(id);
+    for (const id of this.sim.getPlayerIds()) if (!live.has(id)) this.sim.removePlayer(id);
   }
 
   // ------------------------------------------------------------------ loop
@@ -146,17 +165,20 @@ export class RemoteHost implements SimulationHost {
   }
 
   private stepLocal(): void {
-    const sample = this.input.sample();
-    const timed: TimedInput = { ...sample, tick: this.sim.tick };
-    this.pending.push(timed);
-    if (this.pending.length > MAX_PENDING) this.pending.shift();
-    this.recent.push(timed);
-    if (this.recent.length > 3) this.recent.shift();
-    this.conn.sendBinary(encodeInputPacket(this.writer, this.recent));
+    const onField = this.inputEnabled && this.sim.hasPlayer(this.localPlayerId);
+    if (onField) {
+      const sample = this.input.sample();
+      const timed: TimedInput = { ...sample, tick: this.sim.tick };
+      this.pending.push(timed);
+      if (this.pending.length > MAX_PENDING) this.pending.shift();
+      this.recent.push(timed);
+      if (this.recent.length > 3) this.recent.shift();
+      this.conn.sendBinary(encodeInputPacket(this.writer, this.recent));
+      this.sim.setInput(this.localPlayerId, timed);
+    }
 
     this.ticksSinceSnapshot++;
     this.applyDecayedRemoteInputs(remoteInputDecay(this.ticksSinceSnapshot));
-    this.sim.setInput(this.localPlayerId, timed);
     copyMatchState(this.curr, this.prev);
     const ev = this.sim.step();
     for (const e of ev) {
@@ -189,6 +211,7 @@ export class RemoteHost implements SimulationHost {
     a.phase = s.phase;
     a.phaseTicksRemaining = s.phaseTicksRemaining;
     a.clockTicksRemaining = s.clockTicksRemaining;
+    a.paused = s.paused;
     a.scoreLeft = s.scoreLeft;
     a.scoreRight = s.scoreRight;
     Object.assign(a.ball, s.ball);
@@ -198,7 +221,7 @@ export class RemoteHost implements SimulationHost {
       const id = this.slotToId.get(sp.slot);
       if (!id) continue;
       const r = this.roster.find((x) => x.id === id);
-      if (!r) continue;
+      if (!r || r.team === "spec") continue;
       let ps: PlayerState | undefined = a.players[n];
       if (!ps) {
         ps = {

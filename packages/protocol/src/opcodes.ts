@@ -8,7 +8,7 @@ export const OP = {
 
 export type Opcode = (typeof OP)[keyof typeof OP];
 
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 /** Quantos inputs redundantes viajam em cada pacote de input. */
 export const INPUT_REDUNDANCY = 3;

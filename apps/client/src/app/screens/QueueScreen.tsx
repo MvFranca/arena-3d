@@ -26,7 +26,7 @@ export function QueueScreen() {
           joining.current = true;
           const s = getState();
           const ok = await connection.connect(st.match.serverUrl, { token: s.token ?? undefined, name: s.name, loadout: s.loadout });
-          if (!ok) throw new Error("Não foi possível conectar ao servidor da partida.");
+          if (!ok) throw new Error(connection.handshakeError ?? "Não foi possível conectar ao servidor da partida.");
           connection.sendJson({ t: "join", code: st.match.roomCode, ticket: st.match.ticket });
           const unsub = connection.on("room", () => {
             unsub();
