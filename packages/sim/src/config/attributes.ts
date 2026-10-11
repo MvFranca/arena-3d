@@ -1,4 +1,5 @@
 import { ATTRIBUTE_KEYS, type Attributes, type Loadout, type ResolvedStats } from "../types";
+import { DEFAULT_DISC, sanitizeDisc } from "./disc";
 import { sanitizeSkinId } from "./skins";
 import { ATTR, KICK, PLAYER } from "./tuning";
 
@@ -18,6 +19,7 @@ export const DEFAULT_LOADOUT: Loadout = {
   abilityId: "dash",
   archetypeId: "balanced",
   skinId: "default",
+  disc: { ...DEFAULT_DISC },
 };
 
 export interface Archetype {
@@ -100,6 +102,7 @@ export function sanitizeLoadout(input: Partial<Loadout> | null | undefined): Loa
     abilityId: validAbility,
     archetypeId: typeof input?.archetypeId === "string" ? input.archetypeId.slice(0, 32) : undefined,
     skinId: sanitizeSkinId(input?.skinId),
+    disc: sanitizeDisc(input?.disc),
   };
 }
 

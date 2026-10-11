@@ -12,6 +12,9 @@ import { cameraState } from "./cameraState";
 import { PlayerView } from "./PlayerView";
 import { ImpactRings, ParticleSystem } from "./Vfx";
 
+/** Radiano por pixel. Menor = giro mais lento. */
+const LOOK_SENSITIVITY = 0.00115;
+
 export interface GameViewCallbacks {
   onFrame?(state: RenderState, nowMs: number): void;
   onEvent?(ev: MatchEvent, state: RenderState): void;
@@ -108,7 +111,34 @@ export class GameView {
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas.parentElement ?? canvas);
     this.resize();
+    canvas.addEventListener("pointerdown", this.onLookDown);
+    window.addEventListener("pointermove", this.onLookMove);
+    window.addEventListener("pointerup", this.onLookUp);
+    window.addEventListener("pointercancel", this.onLookUp);
   }
+
+  private looking = false;
+
+  private onLookDown = (e: PointerEvent): void => {
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    if (cameraState.lookBlocked) return;
+    cameraState.kickQueued = true;
+    if (cameraState.effectiveMode !== "thirdPerson") return;
+    this.looking = true;
+    void Promise.resolve(this.canvas.requestPointerLock()).catch(() => undefined);
+  };
+
+  private onLookMove = (e: PointerEvent): void => {
+    if (e.pointerType !== "mouse") return;
+    if (cameraState.effectiveMode !== "thirdPerson" || cameraState.lookBlocked || cameraState.orbitYaw === null) return;
+    const locked = document.pointerLockElement === this.canvas;
+    if (!locked && !this.looking) return;
+    cameraState.orbitYaw += e.movementX * LOOK_SENSITIVITY;
+  };
+
+  private onLookUp = (): void => {
+    this.looking = false;
+  };
 
   private resize(): void {
     const parent = this.canvas.parentElement;
@@ -159,7 +189,8 @@ export class GameView {
         const color = p.team === "left" ? this.arena.theme.left : this.arena.theme.right;
         const roster = getState().room?.players.find((r) => r.id === p.id);
         const skinId = roster?.skinId ?? (p.isLocal ? getState().loadout.skinId : undefined);
-        view = new PlayerView({ ...p, skinId }, color, this.arena.theme.accent);
+        const disc = roster?.disc ?? (p.isLocal && p.id !== "p2" ? getState().loadout.disc : undefined);
+        view = new PlayerView({ ...p, skinId, disc }, color, this.arena.theme.accent);
         this.players.set(p.id, view);
         this.scene.add(view.group);
       }
@@ -194,6 +225,12 @@ export class GameView {
       this.focus.z = focusPlayer.z;
       this.focus.yaw = this.players.get(focusPlayer.id)?.visualYaw ?? focusPlayer.yaw;
       focus = this.focus;
+    }
+    if (effective === "thirdPerson" && focus && cameraState.orbitYaw === null) {
+      cameraState.orbitYaw = focus.yaw;
+    }
+    if (effective !== "thirdPerson" && document.pointerLockElement === this.canvas) {
+      document.exitPointerLock();
     }
     this.rig.update(dt, focus, s.ball, prefs, effective);
     cameraState.effectiveMode = this.rig.currentMode;
@@ -330,9 +367,16 @@ export class GameView {
   dispose(): void {
     this.stop();
     this.resizeObserver.disconnect();
+    this.canvas.removeEventListener("pointerdown", this.onLookDown);
+    window.removeEventListener("pointermove", this.onLookMove);
+    window.removeEventListener("pointerup", this.onLookUp);
+    window.removeEventListener("pointercancel", this.onLookUp);
+    if (document.pointerLockElement === this.canvas) document.exitPointerLock();
     cameraState.effectiveMode = "arena";
     cameraState.forcedArena = false;
     cameraState.yaw = -Math.PI / 2;
+    cameraState.orbitYaw = null;
+    cameraState.kickQueued = false;
     for (const v of this.players.values()) v.dispose();
     this.players.clear();
     this.environment.dispose();

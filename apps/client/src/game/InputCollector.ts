@@ -55,7 +55,10 @@ export class InputCollector {
 
   setEnabled(v: boolean): void {
     this.enabled = v;
-    if (!v) this.pressed.clear();
+    if (!v) {
+      this.pressed.clear();
+      if (this.useGamepad) cameraState.kickQueued = false;
+    }
   }
 
   private onKeyDown = (e: KeyboardEvent) => {
@@ -109,6 +112,10 @@ export class InputCollector {
       }
       kick = kick || touchInput.kick;
       ability = ability || touchInput.ability;
+      if (cameraState.kickQueued) {
+        kick = true;
+        cameraState.kickQueued = false;
+      }
     }
 
     const len = Math.hypot(dirX, dirZ);

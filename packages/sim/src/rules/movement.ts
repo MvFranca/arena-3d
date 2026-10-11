@@ -24,7 +24,8 @@ export function applyMovement(p: SimPlayer): void {
 
   let dvx = targetX - v.x;
   let dvz = targetZ - v.z;
-  const maxDv = stats.acceleration * FIXED_DT;
+  const releasing = len < 0.05;
+  const maxDv = (releasing ? PLAYER.coastAcceleration : stats.acceleration) * FIXED_DT;
   const dvLen = Math.hypot(dvx, dvz);
   if (dvLen > maxDv) {
     const s = maxDv / dvLen;

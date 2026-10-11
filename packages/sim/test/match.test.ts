@@ -164,7 +164,7 @@ describe("chute e gol", () => {
     sim.setInput("a", input({ kick: true }));
     const replayed = stepN(sim, 1);
     expect(replayed.some((e) => e.type === "kick")).toBe(true);
-    expect(sim.getBallPosition().x).toBeGreaterThan(pre.ball.x + 0.2);
+    expect(sim.getBallPosition().x).toBeGreaterThan(pre.ball.x + (KICK.baseImpulse / TICK_RATE) * 0.65);
     expect(afterKick.x).toBeGreaterThan(a.x);
     sim.dispose();
   });

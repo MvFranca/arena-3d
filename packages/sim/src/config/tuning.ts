@@ -13,8 +13,10 @@ export const PLAYER = {
   halfHeight: 0.45, // capsula: altura total = 2*(halfHeight+radius)
   /** Folga acima do chao. O jogador e travado em Y, entao nunca encosta no piso. */
   hover: 0.03,
-  baseMaxSpeed: 9.4,
-  baseAcceleration: 42,
+  baseMaxSpeed: 8.04,
+  baseAcceleration: 37.8,
+  /** Aceleração ao soltar o movimento. Menor que a arrancada, para o deslize curto. */
+  coastAcceleration: 12,
   baseMass: 80,
   linearDamping: 0.9,
   /** Slack acima do maxSpeed permitido antes de cortar (empurroes e dash). */
@@ -48,7 +50,7 @@ export const BALL = {
   angularDamping: 1.6,
   friction: 0.4,
   restitution: 0.75,
-  maxSpeed: 34,
+  maxSpeed: 30.6,
   /** Velocidade minima de impacto para gerar evento de quique. */
   bounceEventSpeed: 6,
 };
@@ -60,11 +62,15 @@ export const KICK = {
   bufferTicks: 8,
   /** Ticks apos um chute em que o mesmo jogador nao pode chutar de novo. */
   refractoryTicks: 10,
-  baseImpulse: 17,
+  baseImpulse: 15.3,
   /** Quanto da velocidade horizontal do jogador soma ao chute. */
-  speedShare: 0.55,
+  speedShare: 0.5,
   /** Componente vertical do chute em funcao do impulso horizontal. */
   lift: 0.14,
+  /** Folga ao tirar a bola de dentro do corpo, para o contato não anular o chute. */
+  releaseGap: 0.08,
+  /** Quanto o chute base cresce quando o jogador está parado. Some conforme ele anda. */
+  plantedShare: 0.22,
   /** Distancia extra para o toque suave (controle) alem do contato. */
   touchReach: 0.25,
 };
@@ -93,7 +99,7 @@ export const ABILITIES = {
   dash: {
     cooldownSeconds: 8,
     durationTicks: 14,
-    speed: 22,
+    speed: 18.81,
     /** Multiplicador do teto de velocidade durante o dash. */
     speedCapMultiplier: 2.1,
   },

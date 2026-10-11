@@ -11,12 +11,12 @@ export interface SkinDef {
 export const SKIN_IDS: readonly SkinId[] = ["default", "striker", "neon", "shadow", "gold", "retro"];
 
 export const SKINS: Record<SkinId, SkinDef> = {
-  default: { id: "default", name: "Padrão", description: "Kit clássico da quadra.", swatch: "#e8e4dc" },
-  striker: { id: "striker", name: "Finalizador", description: "Ombros marcados e visor agressivo.", swatch: "#ff5f6d" },
-  neon: { id: "neon", name: "Neon", description: "Bordas luminosas.", swatch: "#4fc3ff" },
-  shadow: { id: "shadow", name: "Sombra", description: "Escuro, anel discreto.", swatch: "#2a2e3a" },
-  gold: { id: "gold", name: "Ouro", description: "Metal e accent dourado.", swatch: "#e6b84a" },
-  retro: { id: "retro", name: "Retrô", description: "Blocos e cores chapadas.", swatch: "#f4a261" },
+  default: { id: "default", name: "Padrão", description: "Botão clássico da quadra.", swatch: "#e8e4dc" },
+  striker: { id: "striker", name: "Finalizador", description: "Centro mais claro e aro marcado.", swatch: "#ff5f6d" },
+  neon: { id: "neon", name: "Neon", description: "Aro luminoso.", swatch: "#4fc3ff" },
+  shadow: { id: "shadow", name: "Sombra", description: "Disco escuro, anel discreto.", swatch: "#2a2e3a" },
+  gold: { id: "gold", name: "Ouro", description: "Metal e aro dourado.", swatch: "#e6b84a" },
+  retro: { id: "retro", name: "Retrô", description: "Cores chapadas, sem brilho.", swatch: "#f4a261" },
 };
 
 export const DEFAULT_SKIN_ID: SkinId = "default";

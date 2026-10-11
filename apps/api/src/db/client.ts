@@ -44,8 +44,10 @@ export async function ensureSchema(db: Database): Promise<void> {
       ability_id varchar(32),
       archetype_id varchar(32),
       skin_id varchar(32),
+      disc jsonb,
       updated_at timestamptz NOT NULL DEFAULT now()
     )`,
+    sql`ALTER TABLE loadouts ADD COLUMN IF NOT EXISTS disc jsonb`,
     sql`CREATE TABLE IF NOT EXISTS matches (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       room_code varchar(8) NOT NULL,

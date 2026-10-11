@@ -77,11 +77,17 @@ export function tryKick(p: SimPlayer, ball: RigidBody, tick: number): KickResult
 
   const pv = p.body.linvel();
   const along = Math.max(0, pv.x * nx + pv.z * nz);
-  let impulse = p.stats.kickBase + along * p.stats.kickSpeedShare;
+  const still = 1 - Math.min(1, Math.hypot(pv.x, pv.z) / Math.max(0.01, p.stats.maxSpeed));
+  let impulse = p.stats.kickBase * (1 + KICK.plantedShare * still) + along * p.stats.kickSpeedShare;
   if (p.kickChargeTicks > 0) {
     impulse *= p.kickChargeMultiplier;
     p.kickChargeTicks = 0;
     p.kickChargeMultiplier = 1;
+  }
+
+  const clear = CONTACT_DIST + KICK.releaseGap;
+  if (dist < clear) {
+    ball.setTranslation({ x: a.x + nx * clear, y: b.y, z: a.z + nz * clear }, true);
   }
 
   const bm = ball.mass();

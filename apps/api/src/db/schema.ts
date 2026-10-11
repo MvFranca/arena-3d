@@ -18,6 +18,7 @@ export const loadouts = pgTable("loadouts", {
   abilityId: varchar("ability_id", { length: 32 }),
   archetypeId: varchar("archetype_id", { length: 32 }),
   skinId: varchar("skin_id", { length: 32 }),
+  disc: jsonb("disc"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

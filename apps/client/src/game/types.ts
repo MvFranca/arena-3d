@@ -1,4 +1,4 @@
-import type { AbilityId, MatchEvent, MatchPhase, Team } from "@arena/sim";
+import type { AbilityId, DiscStyle, MatchEvent, MatchPhase, Team } from "@arena/sim";
 
 /** O que o renderer consome a cada frame. Posicoes ja interpoladas. */
 export interface RenderPlayer {
@@ -13,6 +13,7 @@ export interface RenderPlayer {
   cooldownTicks: number;
   abilityId: AbilityId | null;
   skinId?: string;
+  disc?: DiscStyle;
   isLocal: boolean;
   connected: boolean;
 }

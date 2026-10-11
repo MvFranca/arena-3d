@@ -35,6 +35,14 @@ describe("sanitizeSkinId", () => {
     expect(sanitizeSkinId("nope")).toBe("default");
     expect(sanitizeLoadout({ skinId: "neon" }).skinId).toBe("neon");
     expect(sanitizeLoadout({ skinId: "hack" }).skinId).toBe("default");
+    expect(sanitizeLoadout({ disc: { color: "#00ffaa", stripe: "double", stripeColor: "nope", number: 7, numberColor: "#111111" } }).disc).toEqual({
+      color: "#00ffaa",
+      stripe: "double",
+      stripeColor: "#f4f7fb",
+      number: 7,
+      numberColor: "#111111",
+    });
+    expect(sanitizeLoadout({ disc: { number: 120 } as never }).disc?.number).toBeNull();
     expect(Object.keys(SKINS)).toHaveLength(6);
   });
 });

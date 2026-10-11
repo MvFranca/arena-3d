@@ -34,10 +34,11 @@ export function CameraSettings(props: { compact?: boolean; className?: string })
             onClick={() => setCameraPrefs({ mode: m })}
           >
             <div className="font-semibold">{CAMERA_MODE_LABEL[m]}</div>
-            {!props.compact && <div className="mt-0.5 text-xs text-white/50">{m === "arena" ? "Campo inteiro visível. Padrão, melhor na horizontal." : "Atrás do seu jogador, seguindo a direção dele."}</div>}
+            {!props.compact && <div className="mt-0.5 text-xs text-white/50">{m === "arena" ? "Campo inteiro visível. Padrão, melhor na horizontal." : "Atrás do jogador. O mouse gira a câmera."}</div>}
           </button>
         ))}
       </div>
+      {third && <p className="mt-2 text-xs text-white/50">O mouse gira a câmera. As teclas só movem o jogador.</p>}
 
       <div className={`mt-3 space-y-2 ${third ? "" : "opacity-40"} ${props.compact ? "text-xs" : "text-sm"}`} aria-disabled={!third}>
         {SLIDERS.map((s) => {

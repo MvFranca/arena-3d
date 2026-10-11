@@ -1,6 +1,7 @@
 import { playerWalkBounds, type ArenaConfig } from "@arena/sim";
 import * as THREE from "three";
 import type { CameraMode, CameraPrefs } from "../app/cameraPrefs";
+import { cameraState } from "./cameraState";
 
 const ARENA_PITCH = THREE.MathUtils.degToRad(56);
 const ARENA_FOV = 40;
@@ -123,13 +124,9 @@ export class CameraRig {
   // ------------------------------------------------------- terceira pessoa
 
   private updateThirdPerson(dtSec: number, focus: CameraFocus, prefs: CameraPrefs): void {
-    // Amortecimento angular: giros de 180 graus nao chicoteiam a camera.
-    if (this.followYaw === null) this.followYaw = focus.yaw;
-    let d = focus.yaw - this.followYaw;
-    while (d > Math.PI) d -= Math.PI * 2;
-    while (d < -Math.PI) d += Math.PI * 2;
-    this.followYaw += d * (1 - Math.exp(-dtSec * prefs.smoothing));
-    const yaw = this.followYaw;
+    // O yaw vem do mouse. O corpo pode virar com o WASD sem arrastar a câmera.
+    const yaw = cameraState.orbitYaw ?? focus.yaw;
+    this.followYaw = yaw;
     const fx = Math.cos(yaw);
     const fz = Math.sin(yaw);
 

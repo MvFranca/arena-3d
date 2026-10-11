@@ -58,6 +58,7 @@ export function createApp(db: Database) {
       abilityId: lo?.abilityId as never,
       archetypeId: lo?.archetypeId ?? undefined,
       skinId: lo?.skinId ?? undefined,
+      disc: lo?.disc as never,
     });
     const stats = st
       ? { matches: st.matches, wins: st.wins, losses: st.losses, draws: st.draws, goals: st.goals, ownGoals: st.ownGoals, mmr: st.mmr, xp: st.xp, level: levelFromXp(st.xp) }
@@ -81,10 +82,10 @@ export function createApp(db: Database) {
     const loadout = sanitizeLoadout(body);
     await db
       .insert(loadouts)
-      .values({ userId: sub, attributes: loadout.attributes, abilityId: loadout.abilityId, archetypeId: loadout.archetypeId, skinId: loadout.skinId })
+      .values({ userId: sub, attributes: loadout.attributes, abilityId: loadout.abilityId, archetypeId: loadout.archetypeId, skinId: loadout.skinId, disc: loadout.disc })
       .onConflictDoUpdate({
         target: loadouts.userId,
-        set: { attributes: loadout.attributes, abilityId: loadout.abilityId, archetypeId: loadout.archetypeId, skinId: loadout.skinId, updatedAt: new Date() },
+        set: { attributes: loadout.attributes, abilityId: loadout.abilityId, archetypeId: loadout.archetypeId, skinId: loadout.skinId, disc: loadout.disc, updatedAt: new Date() },
       });
     return c.json({ loadout });
   });
@@ -171,6 +172,7 @@ export function createApp(db: Database) {
         abilityId: lo.abilityId as never,
         archetypeId: lo.archetypeId ?? undefined,
         skinId: lo.skinId ?? undefined,
+        disc: lo.disc as never,
       }),
     });
   });

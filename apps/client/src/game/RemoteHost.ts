@@ -121,7 +121,7 @@ export class RemoteHost implements SimulationHost {
           slot: p.slot,
           team: p.team,
           name: p.name,
-          loadout: { attributes: p.attributes, abilityId: p.abilityId, archetypeId: p.archetypeId, skinId: p.skinId },
+          loadout: { attributes: p.attributes, abilityId: p.abilityId, archetypeId: p.archetypeId, skinId: p.skinId, disc: p.disc },
         });
       }
     }

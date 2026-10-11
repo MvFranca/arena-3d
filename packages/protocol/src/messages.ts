@@ -1,4 +1,4 @@
-import type { AbilityId, ArenaConfig, Attributes, Loadout, MatchEvent, Ruleset, Team } from "@arena/sim";
+import type { AbilityId, ArenaConfig, Attributes, DiscStyle, Loadout, MatchEvent, Ruleset, Team } from "@arena/sim";
 
 /** Time em campo ou fora da partida. A fisica so conhece left/right. */
 export type RosterTeam = Team | "spec";
@@ -16,6 +16,7 @@ export interface RosterPlayer {
   attributes: Attributes;
   archetypeId?: string;
   skinId?: string;
+  disc?: DiscStyle;
 }
 
 export type RoomPhase = "lobby" | "countdown" | "playing" | "goal" | "finished";

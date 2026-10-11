@@ -10,6 +10,15 @@ export const cameraState = {
   effectiveMode: "arena" as CameraMode,
   /** Yaw horizontal para onde a camera aponta (radianos, convencao atan2(z, x)). */
   yaw: -Math.PI / 2,
+  /**
+   * Órbita do modo 3D, controlada só pelo mouse. null até entrar nesse modo.
+   * O teclado move o jogador, mas não gira esta câmera.
+   */
+  orbitYaw: null as number | null,
+  /** Clique esquerdo no campo, consumido pelo InputCollector no próximo sample. */
+  kickQueued: false,
+  /** Menu ou painel aberto: o mouse não gira a câmera. */
+  lookBlocked: false,
   /** True quando as preferencias pedem terceira pessoa mas o 2P local obriga arena. */
   forcedArena: false,
 };

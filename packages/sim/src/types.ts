@@ -1,4 +1,5 @@
 import type { ArenaConfig } from "./config/arenas";
+import type { DiscStyle } from "./config/disc";
 
 export type Team = "left" | "right";
 
@@ -62,6 +63,8 @@ export interface Loadout {
   abilityId: AbilityId | null;
   archetypeId?: string;
   skinId?: string;
+  /** Visual do botão. Não entra na física. */
+  disc?: DiscStyle;
 }
 
 /** Atributos ja convertidos em numeros que a fisica entende. */

@@ -21,6 +21,11 @@ import type { Session } from "../net/Session";
 const INPUT_HOLD_TICKS = 6;
 /** Input atrasado em ate N ticks ainda vale para o tick atual. */
 const LATE_TOLERANCE_TICKS = 3;
+/**
+ * Seq tão menor que o ack, num tick recente, significa coletor novo
+ * (revanche ou reconexão). Reordenação normal fica abaixo disso.
+ */
+const SEQ_RESTART_GAP = 16;
 /** Input adiantado demais e descartado. */
 const FUTURE_LIMIT_TICKS = 45;
 
@@ -339,9 +344,19 @@ export class MatchRoom {
     this.autoStartAt = null;
     this.startedAt = Date.now();
     this.goalsByPlayer.clear();
+    for (const slot of this.slots.values()) this.resetSlotInput(slot);
     this.sim.start();
     this.broadcastRoom();
     log.info({ room: this.code, players: this.slots.size }, "match started");
+  }
+
+  /** Nova partida ou coletor novo: o seq da partida anterior deixa de valer. */
+  private resetSlotInput(slot: Slot): void {
+    slot.lastSeq = 0;
+    slot.inputs.clear();
+    slot.lastInput = { ...EMPTY_INPUT };
+    slot.lastInputTick = -1;
+    this.sim.resetInputAck(slot.session.playerId);
   }
 
   // ---------------------------------------------------------------- input
@@ -351,6 +366,13 @@ export class MatchRoom {
     if (!slot) return;
     const now = this.sim.tick;
     for (const inp of inputs) {
+      if (
+        slot.lastSeq - inp.seq > SEQ_RESTART_GAP &&
+        inp.tick >= now - LATE_TOLERANCE_TICKS &&
+        inp.tick <= now + FUTURE_LIMIT_TICKS
+      ) {
+        this.resetSlotInput(slot);
+      }
       if (inp.seq <= slot.lastSeq && inp.tick < now) continue;
       if (inp.tick > now + FUTURE_LIMIT_TICKS) {
         metrics.inputsDropped++;
@@ -398,7 +420,7 @@ export class MatchRoom {
       } else if (slot.connected && t - slot.lastInputTick <= INPUT_HOLD_TICKS) {
         input = { ...slot.lastInput, tick: t, seq: slot.lastSeq };
       } else {
-        input = { ...EMPTY_INPUT, tick: t, seq: slot.lastSeq };
+        input = { ...EMPTY_INPUT, tick: t, seq: 0 };
       }
       this.sim.setInput(slot.session.playerId, input);
       for (const k of slot.inputs.keys()) if (k < t) slot.inputs.delete(k);
@@ -453,9 +475,8 @@ export class MatchRoom {
     this.sim = this.spawnSim();
     for (const s of this.slots.values()) {
       s.ready = false;
-      s.inputs.clear();
-      s.lastInputTick = -1;
       this.spawnSlot(s);
+      this.resetSlotInput(s);
     }
     old.dispose();
     this.automatic = false; // revanche fica na mao do host
@@ -498,6 +519,7 @@ export class MatchRoom {
         attributes: s.session.loadout.attributes,
         archetypeId: s.session.loadout.archetypeId,
         skinId: s.session.loadout.skinId,
+        disc: s.session.loadout.disc,
       }));
     return { code: this.code, ruleset: this.ruleset, arena: this.arena, mapId: this.mapId, phase: this.sim.phase, players, automatic: this.automatic, paused: this.sim.paused };
   }

@@ -116,6 +116,12 @@ export class MatchSimulation {
     if (input.seq > p.lastSeq) p.lastSeq = input.seq;
   }
 
+  /** O cliente recriou o coletor; o ack antigo não pode continuar no snapshot. */
+  resetInputAck(id: string): void {
+    const p = this.players.get(id);
+    if (p) p.lastSeq = 0;
+  }
+
   /** Lobby -> countdown. Reposiciona todo mundo. */
   start(): void {
     if (this.phase !== "lobby") return;

@@ -1,10 +1,19 @@
-import { ARCHETYPES, ATTR, ATTRIBUTE_KEYS, attributeBudgetUsed, listAbilities, listSkins, sanitizeLoadout, type AbilityId, type Attributes, type Loadout } from "@arena/sim";
+import { ARCHETYPES, ATTR, ATTRIBUTE_KEYS, attributeBudgetUsed, DEFAULT_DISC, listAbilities, listSkins, sanitizeLoadout, type AbilityId, type Attributes, type DiscStripe, type DiscStyle, type Loadout } from "@arena/sim";
 import { useEffect, useState } from "react";
 import { api, type MatchHistoryItem, type PlayerStats } from "../../session/api";
 import { CameraSettings } from "../../ui/CameraSettings";
 import { Card, ErrorBanner, Logo, Shell } from "../../ui/common";
+import { DiscPreview } from "../../ui/DiscPreview";
 import { blurFieldOnEscape, isFormField } from "../../ui/keys";
 import { getState, navigate, setState, useAppState } from "../store";
+
+const DISC_COLORS = ["#ff5f6d", "#4fc3ff", "#f4f7fb", "#1b1f2e", "#3dd68c", "#ffe14a", "#ff9f43", "#b388ff"];
+const STRIPES: { id: DiscStripe; label: string }[] = [
+  { id: "none", label: "Sem listra" },
+  { id: "band", label: "Faixa" },
+  { id: "double", label: "Duas faixas" },
+  { id: "ring", label: "Anel" },
+];
 
 const ATTR_LABEL: Record<keyof Attributes, string> = {
   speed: "Velocidade",
@@ -22,7 +31,7 @@ export function ProfileScreen() {
   const apiOnline = useAppState((s) => s.apiOnline);
   const user = useAppState((s) => s.user);
   const error = useAppState((s) => s.error);
-  const [draft, setDraft] = useState<Loadout>(() => ({ ...loadout, attributes: { ...loadout.attributes } }));
+  const [draft, setDraft] = useState<Loadout>(() => sanitizeLoadout({ ...loadout, attributes: { ...loadout.attributes } }));
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [history, setHistory] = useState<MatchHistoryItem[]>([]);
   const [saving, setSaving] = useState(false);
@@ -62,7 +71,7 @@ export function ProfileScreen() {
   const applyArchetype = (id: string) => {
     const a = ARCHETYPES[id];
     if (!a) return;
-    setDraft({ attributes: { ...a.attributes }, abilityId: a.abilityId, archetypeId: a.id, skinId: draft.skinId });
+    setDraft({ attributes: { ...a.attributes }, abilityId: a.abilityId, archetypeId: a.id, skinId: draft.skinId, disc: draft.disc });
   };
 
   const save = async () => {
@@ -139,24 +148,31 @@ export function ProfileScreen() {
             </button>
           </div>
 
-          <h3 className="font-display mt-6 mb-2 text-lg font-bold">Visual</h3>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {listSkins().map((s) => (
-              <button
-                key={s.id}
-                className={`rounded-xl border p-3 text-left text-sm transition ${draft.skinId === s.id ? "border-white/50 bg-white/10" : "border-white/10 bg-white/5 hover:bg-white/10"}`}
-                onClick={() => setDraft({ ...draft, skinId: s.id })}
-              >
-                <div className="mb-2 h-3 w-10 rounded-full" style={{ background: s.swatch }} />
-                <div className="font-semibold">{s.name}</div>
-                <div className="mt-1 text-xs text-white/50">{s.description}</div>
-              </button>
-            ))}
-          </div>
-
         </Card>
 
         <div className="flex flex-col gap-4">
+          <Card>
+            <h2 className="font-display text-xl font-bold">Botão</h2>
+            <p className="mt-1 text-sm text-white/50">A cor, as listras e o número aparecem na partida. O anel no chão continua marcando o time.</p>
+            <div className="mt-3 overflow-hidden rounded-2xl bg-[#0c1a2e]">
+              <DiscPreview skinId={draft.skinId} disc={draft.disc ?? DEFAULT_DISC} />
+            </div>
+            <DiscEditor disc={draft.disc ?? DEFAULT_DISC} onChange={(disc) => setDraft({ ...draft, disc })} />
+            <h3 className="font-display mt-5 mb-2 text-sm font-bold uppercase tracking-wider text-white/45">Acabamento</h3>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {listSkins().map((s) => (
+                <button
+                  key={s.id}
+                  className={`rounded-xl border p-3 text-left text-sm transition ${draft.skinId === s.id ? "border-white/50 bg-white/10" : "border-white/10 bg-white/5 hover:bg-white/10"}`}
+                  onClick={() => setDraft({ ...draft, skinId: s.id })}
+                >
+                  <div className="mb-2 h-2.5 w-8 rounded-full" style={{ background: s.swatch }} />
+                  <div className="font-semibold">{s.name}</div>
+                  <div className="mt-1 text-xs text-white/50">{s.description}</div>
+                </button>
+              ))}
+            </div>
+          </Card>
           <Card>
             <h2 className="font-display mb-3 text-xl font-bold">{user ? user.name : "Perfil"}</h2>
             {!apiOnline && <p className="text-sm text-white/50">A API está offline. O loadout fica salvo neste navegador e vale nas partidas locais e em salas sem conta.</p>}
@@ -196,6 +212,82 @@ export function ProfileScreen() {
         </div>
       </div>
     </Shell>
+  );
+}
+
+function DiscEditor({ disc, onChange }: { disc: DiscStyle; onChange: (disc: DiscStyle) => void }) {
+  const set = (patch: Partial<DiscStyle>) => onChange({ ...disc, ...patch });
+  return (
+    <div className="mt-4 space-y-4">
+      <div>
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/45">Cor</div>
+        <div className="flex flex-wrap items-center gap-2">
+          {DISC_COLORS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              aria-label={`Cor ${color}`}
+              className={`h-7 w-7 rounded-full border-2 ${disc.color === color ? "border-white" : "border-white/20"}`}
+              style={{ background: color }}
+              onClick={() => set({ color })}
+            />
+          ))}
+          <label className="ml-1 text-xs text-white/50">
+            outra
+            <input type="color" value={disc.color} aria-label="Cor personalizada" className="ml-2 h-7 w-9 cursor-pointer bg-transparent" onChange={(e) => set({ color: e.target.value.toLowerCase() })} />
+          </label>
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/45">Listras</div>
+        <div className="flex flex-wrap gap-2">
+          {STRIPES.map((s) => (
+            <button key={s.id} type="button" className={`rounded-full border px-3 py-1 text-sm ${disc.stripe === s.id ? "border-white/60 bg-white/15" : "border-white/10 bg-white/5 hover:bg-white/10"}`} onClick={() => set({ stripe: s.id })}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+        {disc.stripe !== "none" && (
+          <label className="mt-2 flex items-center gap-2 text-xs text-white/50">
+            cor da listra
+            <input type="color" value={disc.stripeColor} aria-label="Cor da listra" className="h-7 w-9 cursor-pointer bg-transparent" onChange={(e) => set({ stripeColor: e.target.value.toLowerCase() })} />
+          </label>
+        )}
+      </div>
+
+      <div>
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/45">Número</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            inputMode="numeric"
+            maxLength={2}
+            placeholder="—"
+            aria-label="Número do botão"
+            value={disc.number === null ? "" : String(disc.number)}
+            className="w-16 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-sm tabular-nums outline-none focus:border-white/30"
+            onChange={(e) => {
+              const raw = e.target.value.replace(/\D/g, "").slice(0, 2);
+              set({ number: raw === "" ? null : Number(raw) });
+            }}
+          />
+          {[7, 10, 23].map((n) => (
+            <button key={n} type="button" className={`rounded-full border px-3 py-1 text-sm tabular-nums ${disc.number === n ? "border-white/60 bg-white/15" : "border-white/10 bg-white/5 hover:bg-white/10"}`} onClick={() => set({ number: n })}>
+              {n}
+            </button>
+          ))}
+          <button type="button" className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-white/60 hover:bg-white/10" onClick={() => set({ number: null })}>
+            sem número
+          </button>
+          {disc.number !== null && (
+            <label className="flex items-center gap-2 text-xs text-white/50">
+              cor
+              <input type="color" value={disc.numberColor} aria-label="Cor do número" className="h-7 w-9 cursor-pointer bg-transparent" onChange={(e) => set({ numberColor: e.target.value.toLowerCase() })} />
+            </label>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

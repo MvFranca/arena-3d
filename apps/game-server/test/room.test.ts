@@ -373,4 +373,51 @@ describe("limites, pausa e espectadores", () => {
     a.close();
     b.close();
   });
+
+  it("segunda partida anda com seq reiniciado e tick atrasado", async () => {
+    const a = new TestClient(server.port);
+    const b = new TestClient(server.port);
+    await a.connect("Ana");
+    await b.connect("Bia");
+    a.send({ t: "create", rulesetId: "duel" });
+    await a.waitFor(() => !!a.room);
+    b.send({ t: "join", code: a.room!.code });
+    await b.waitFor(() => !!b.room && b.room.players.length === 2);
+    b.send({ t: "ready", ready: true });
+    await a.waitFor(() => !!a.room?.players.find((p) => p.name === "Bia")?.ready);
+    a.send({ t: "start" });
+    await a.waitFor(() => a.room?.phase === "countdown");
+    server.tick(TICK_RATE * 3 + 2);
+    await sleep(20);
+
+    for (let i = 0; i < 40; i++) a.sendInput(server.game.tick + 2 + i, { dirZ: 1 });
+    await sleep(30);
+    server.tick(50);
+    await sleep(30);
+    const first = a.snapshots.at(-1)!.players.find((p) => p.slot === a.mySlot)!;
+    expect(first.lastSeq).toBeGreaterThan(30);
+
+    a.send({ t: "restart" });
+    await a.waitFor(() => a.room?.phase === "lobby");
+    b.send({ t: "ready", ready: true });
+    await a.waitFor(() => !!a.room?.players.find((p) => p.name === "Bia")?.ready);
+    a.send({ t: "start" });
+    await a.waitFor(() => a.room?.phase === "countdown");
+    server.tick(TICK_RATE * 3 + 2);
+    await sleep(20);
+
+    const before = a.snapshots.at(-1)!.players.find((p) => p.slot === a.mySlot)!;
+    for (let i = 0; i < 25; i++) {
+      a.sendInput(server.game.tick - 1, { seq: i + 1, dirZ: 1 });
+      await sleep(15);
+      server.tick(1);
+    }
+    await sleep(20);
+    const after = a.snapshots.at(-1)!.players.find((p) => p.slot === a.mySlot)!;
+    expect(after.z).toBeGreaterThan(before.z + 1);
+    expect(after.lastSeq).toBeGreaterThan(0);
+    expect(after.lastSeq).toBeLessThan(first.lastSeq);
+    a.close();
+    b.close();
+  });
 });

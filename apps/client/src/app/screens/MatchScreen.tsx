@@ -6,6 +6,7 @@ import { RemoteHost } from "../../game/RemoteHost";
 import type { RenderState, SimulationHost } from "../../game/types";
 import { connection } from "../../net/GameConnection";
 import { gameAudio } from "../../render/Audio";
+import { cameraState } from "../../render/cameraState";
 import { GameView } from "../../render/GameView";
 import { CameraSettings } from "../../ui/CameraSettings";
 import { ArrowIcon } from "../../ui/icons";
@@ -189,7 +190,9 @@ export function MatchScreen() {
 
   useEffect(() => {
     hostRef.current?.setInputEnabled(!menu && !spectating);
-  }, [menu, spectating, arenaKey]);
+    cameraState.lookBlocked = menu || cameraPanel || spectating;
+    if (menu || cameraPanel || spectating) document.exitPointerLock();
+  }, [menu, spectating, cameraPanel, arenaKey]);
 
   const leave = () => {
     if (getState().mode === "online") {
